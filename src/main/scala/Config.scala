@@ -2,19 +2,21 @@ import org.apache.spark.sql.types._
 
 object Config {
 
-    // Kafka
-    val BOOTSTRAP_SERVER: String = "localhost:9092"
+  val BATCH_SIZE = 1000
+
+  // Kafka
+  val BOOTSTRAP_SERVER: String = "localhost:9092"
 
   // Base de données
-    val DB_URL: String = ""
-    val DB_USER: String = ""
-    val DB_PASSWORD: String = ""
-    val DB_DRIVER: String = ""
+  val DB_URL: String = ""
+  val DB_USER: String = ""
+  val DB_PASSWORD: String = ""
+  val DB_DRIVER: String = ""
 
-    // Business
-    val BUSINESS_TOPIC: String = "yelp-topic-business"
-    val BUSINESS_JSON_PATH: String = "yelp_dataset/yelp_academic_dataset_business.json"
-    val BUSINESS_SCHEMA: StructType = StructType(List(
+  // Business
+  val BUSINESS_TOPIC: String = "yelp-topic-business"
+  val BUSINESS_JSON_PATH: String = "yelp_dataset/yelp_academic_dataset_business.json"
+  val BUSINESS_SCHEMA: StructType = StructType(List(
     StructField("business_id", StringType, true),
     StructField("name", StringType, true),
     StructField("address", StringType, true),
@@ -29,13 +31,15 @@ object Config {
     StructField("attributes", StringType, true),
     StructField("categories", StringType, true),
     StructField("hours", StringType, true)
-    ))
-    val BUSINESS_TABLE: String = "business_table"
+  ))
+  val BUSINESS_TABLE: String = "business_table"
+  val BUSINESS_OUTPUT_PATH: String = "output_batches/business/"
+  val BUSINESS_CHECKPOINT_FILE: String = "output_batches/checkpoint_business.txt"
 
-    // Review
-    val REVIEW_TOPIC: String = "yelp-topic-review"
-    val REVIEW_JSON_PATH: String = "yelp_dataset/yelp_academic_dataset_review.json"
-    val REVIEW_SCHEMA: StructType = StructType(List(
+  // Review
+  val REVIEW_TOPIC: String = "yelp-topic-review"
+  val REVIEW_JSON_PATH: String = "yelp_dataset/yelp_academic_dataset_review.json"
+  val REVIEW_SCHEMA: StructType = StructType(List(
     StructField("review_id", StringType, true),
     StructField("user_id", StringType, true),
     StructField("business_id", StringType, true),
@@ -45,13 +49,15 @@ object Config {
     StructField("cool", IntegerType, true),
     StructField("text", StringType, true),
     StructField("date", StringType, true)
-    ))
-    val REVIEW_TABLE: String = "review_table"
+  ))
+  val REVIEW_TABLE: String = "review_table"
+  val REVIEW_OUTPUT_PATH: String = "output_batches/review/"
+  val REVIEW_CHECKPOINT_FILE: String = "output_batches/checkpoint_review.txt"
 
-    // User
-    val USER_TOPIC: String = "yelp-topic-user"
-    val USER_JSON_PATH: String = "yelp_dataset/yelp_academic_dataset_user.json"
-    val USER_SCHEMA: StructType = StructType(List(
+  // User
+  val USER_TOPIC: String = "yelp-topic-user"
+  val USER_JSON_PATH: String = "yelp_dataset/yelp_academic_dataset_user.json"
+  val USER_SCHEMA: StructType = StructType(List(
     StructField("user_id", StringType, true),
     StructField("name", StringType, true),
     StructField("review_count", IntegerType, true),
@@ -74,19 +80,23 @@ object Config {
     StructField("compliment_funny", IntegerType, true),
     StructField("compliment_writer", IntegerType, true),
     StructField("compliment_photos", IntegerType, true)
-    ))
-    val USER_TABLE: String = "user_table"
+  ))
+  val USER_TABLE: String = "user_table"
+  val USER_OUTPUT_PATH: String = "output_batches/user/"
+  val USER_CHECKPOINT_FILE: String = "output_batches/checkpoint_user.txt"
 
-    // Tip
-    val TIP_TOPIC: String = "yelp-topic-tip"
-    val TIP_JSON_PATH: String = "yelp_dataset/yelp_academic_dataset_tip.json"
-    val TIP_SCHEMA: StructType = StructType(List(
+  // Tip
+  val TIP_TOPIC: String = "yelp-topic-tip"
+  val TIP_JSON_PATH: String = "yelp_dataset/yelp_academic_dataset_tip.json"
+  val TIP_SCHEMA: StructType = StructType(List(
     StructField("user_id", StringType, true),
     StructField("business_id", StringType, true),
     StructField("text", StringType, true),
     StructField("date", StringType, true),
     StructField("compliment_count", IntegerType, true)
-    ))
-    val TIP_TABLE: String = "tip_table"
+  ))
+  val TIP_TABLE: String = "tip_table"
+  val TIP_OUTPUT_PATH: String = "output_batches/tip/"
+  val TIP_CHECKPOINT_FILE: String = "output_batches/checkpoint_tip.txt"
 
 }

@@ -1,4 +1,5 @@
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.types.{StructType}
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 import java.util.Properties
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -31,7 +32,7 @@ object Producer {
     spark.stop()
   }
 
-  def sendJsonToKafka(spark: SparkSession, path: String, schema: org.apache.spark.sql.types.StructType, topic: String, bootstrapServers: String): Unit = {
+  def sendJsonToKafka(spark: SparkSession, path: String, schema: StructType, topic: String, bootstrapServers: String): Unit = {
     println(s"\n========================================== TOPIC : $topic ==========================================\n")
     val df = spark.read.schema(schema).json(path)
 
