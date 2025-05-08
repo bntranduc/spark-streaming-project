@@ -1,31 +1,6 @@
-# === Scala / SBT / Spark ===
-target/
-project/target/
-project/project/
-output_batches/
-
-# === IDEs ===
-.idea/
-.vscode/
-.bloop/
-.metals/
-*.iml
-
-# === Mac/Linux system files ===
-.DS_Store
-
-# === Jupyter Notebooks Checkpoints ===
-.ipynb_checkpoints/
-
-# === Dataset local (ne pas versionner les données lourdes) ===
 yelp_dataset/
-
-# === Fichiers temporaires et logs ===
-*.log
-*.tmp
-
-# === Docker ===
-*.pid
-
-# === Fichiers d'environnement sensibles ===
-.env
+DataVisualisation/.venv
+Producer/target/
+Producer/project/
+Consumer/target/
+Consumer/project/

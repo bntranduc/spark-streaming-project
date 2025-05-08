@@ -8,14 +8,16 @@ object Config {
   val BOOTSTRAP_SERVER: String = "localhost:9092"
 
   // Base de données
-  val DB_URL: String = ""
-  val DB_USER: String = ""
-  val DB_PASSWORD: String = ""
-  val DB_DRIVER: String = ""
+  val DB_URL: String = "jdbc:postgresql://localhost:5432/mydatabase"
+  val DB_USER: String = "user"
+  val DB_PASSWORD: String = "password"
+  val DB_DRIVER: String = "org.postgresql.Driver"
 
+
+  val DATASET_PATH="../yelp_dataset/"
   // Business
   val BUSINESS_TOPIC: String = "yelp-topic-business"
-  val BUSINESS_JSON_PATH: String = "yelp_dataset/yelp_academic_dataset_business.json"
+  val BUSINESS_JSON_PATH: String = DATASET_PATH + "yelp_academic_dataset_business.json"
   val BUSINESS_SCHEMA: StructType = StructType(List(
     StructField("business_id", StringType, true),
     StructField("name", StringType, true),
@@ -38,7 +40,7 @@ object Config {
 
   // Review
   val REVIEW_TOPIC: String = "yelp-topic-review"
-  val REVIEW_JSON_PATH: String = "yelp_dataset/yelp_academic_dataset_review.json"
+  val REVIEW_JSON_PATH: String = DATASET_PATH + "yelp_academic_dataset_review.json"
   val REVIEW_SCHEMA: StructType = StructType(List(
     StructField("review_id", StringType, true),
     StructField("user_id", StringType, true),
@@ -56,7 +58,7 @@ object Config {
 
   // User
   val USER_TOPIC: String = "yelp-topic-user"
-  val USER_JSON_PATH: String = "yelp_dataset/yelp_academic_dataset_user.json"
+  val USER_JSON_PATH: String = DATASET_PATH + "yelp_academic_dataset_user.json"
   val USER_SCHEMA: StructType = StructType(List(
     StructField("user_id", StringType, true),
     StructField("name", StringType, true),
@@ -87,7 +89,7 @@ object Config {
 
   // Tip
   val TIP_TOPIC: String = "yelp-topic-tip"
-  val TIP_JSON_PATH: String = "yelp_dataset/yelp_academic_dataset_tip.json"
+  val TIP_JSON_PATH: String = DATASET_PATH + "yelp_academic_dataset_tip.json"
   val TIP_SCHEMA: StructType = StructType(List(
     StructField("user_id", StringType, true),
     StructField("business_id", StringType, true),
@@ -98,5 +100,4 @@ object Config {
   val TIP_TABLE: String = "tip_table"
   val TIP_OUTPUT_PATH: String = "output_batches/tip/"
   val TIP_CHECKPOINT_FILE: String = "output_batches/checkpoint_tip.txt"
-
 }

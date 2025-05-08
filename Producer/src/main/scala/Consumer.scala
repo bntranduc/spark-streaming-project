@@ -16,7 +16,7 @@ object Consumer {
     spark.sparkContext.setLogLevel("WARN")
 
     // Consommer Business
-    consumeKafkaTopicAndWriteToDB(spark, BUSINESS_TOPIC, BUSINESS_SCHEMA, BUSINESS_TABLE)
+    //consumeKafkaTopicAndWriteToDB(spark, BUSINESS_TOPIC, BUSINESS_SCHEMA, BUSINESS_TABLE)
 
     // Consommer Review
     // consumeKafkaTopicAndWriteToDB(spark, REVIEW_TOPIC, REVIEW_SCHEMA, REVIEW_TABLE)
@@ -26,7 +26,6 @@ object Consumer {
 
     // Consommer Tip
     // consumeKafkaTopicAndWriteToDB(spark, TIP_TOPIC, TIP_SCHEMA, TIP_TABLE)
-
 
     spark.streams.awaitAnyTermination()
   }

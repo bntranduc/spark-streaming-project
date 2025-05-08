@@ -4,6 +4,7 @@ import java.io.File
 import scala.collection.mutable
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 import java.util.Properties
+import Config._
 
 object FileBatchConsumer {
 

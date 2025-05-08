@@ -18,10 +18,10 @@ object Producer {
       .getOrCreate()
 
     // Producer for Business data
-    sendJsonToKafka(spark, BUSINESS_JSON_PATH, BUSINESS_SCHEMA, BUSINESS_TOPIC, BOOTSTRAP_SERVER)
+    // sendJsonToKafka(spark, BUSINESS_JSON_PATH, BUSINESS_SCHEMA, BUSINESS_TOPIC, BOOTSTRAP_SERVER)
 
     // Producer for Review data
-    // sendJsonToKafka(spark, REVIEW_JSON_PATH, REVIEW_SCHEMA, REVIEW_TOPIC, BOOTSTRAP_SERVER)
+    sendJsonToKafka(spark, REVIEW_JSON_PATH, REVIEW_SCHEMA, REVIEW_TOPIC, BOOTSTRAP_SERVER)
 
     // Producer for User data
     // sendJsonToKafka(spark, USER_JSON_PATH, USER_SCHEMA, USER_TOPIC, BOOTSTRAP_SERVER)
@@ -61,7 +61,7 @@ object Producer {
       println(s"record_$index sent")
       index += 1
 
-      Thread.sleep(500)
+      Thread.sleep(5000)
     }
 
     producer.close()
