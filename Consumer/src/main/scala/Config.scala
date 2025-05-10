@@ -2,7 +2,7 @@ import org.apache.spark.sql.types._
 
 object Config {
   //Dataset path
-  val DATASET_PATH = sys.env.getOrElse("DATASET_PATH", "../yelp_dataset/")
+  val DATASET_PATH = "/home/bao/ESGI/4IABD/S2/spark-streaming-project/yelp_dataset/"
   
   val BUSINESS_JSON_PATH: String = DATASET_PATH + "/yelp_academic_dataset_business.json"
   val REVIEW_JSON_PATH: String = DATASET_PATH + "yelp_academic_dataset_review.json"
@@ -39,7 +39,7 @@ object Config {
   val BUSINESS_TABLE: String = "business_table"
 
   // Review
-  val REVIEW_TOPIC: String = "yelp-topic-review"
+  val REVIEW_TOPIC: String = "yelp-topic-review-1"
   val REVIEW_SCHEMA: StructType = StructType(List(
     StructField("review_id", StringType, true),
     StructField("user_id", StringType, true),
@@ -49,7 +49,8 @@ object Config {
     StructField("funny", IntegerType, true),
     StructField("cool", IntegerType, true),
     StructField("text", StringType, true),
-    StructField("date", StringType, true)
+    StructField("date", StringType, true),
+    StructField("id_date", IntegerType, true)  // <-- ajouté ici
   ))
   val REVIEW_TABLE: String = "review_table"
 
