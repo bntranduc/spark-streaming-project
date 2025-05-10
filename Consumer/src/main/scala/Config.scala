@@ -1,8 +1,12 @@
 import org.apache.spark.sql.types._
 
 object Config {
-
-  val BATCH_SIZE = 1000
+  //Dataset path
+  val DATASET_PATH = sys.env.getOrElse("DATASET_PATH", "../yelp_dataset/")
+  
+  val BUSINESS_JSON_PATH: String = DATASET_PATH + "/yelp_academic_dataset_business.json"
+  val REVIEW_JSON_PATH: String = DATASET_PATH + "yelp_academic_dataset_review.json"
+  val USER_JSON_PATH: String = DATASET_PATH + "/yelp_academic_dataset_user.json"
 
   // Kafka
   val BOOTSTRAP_SERVER: String = "localhost:9092"
@@ -13,10 +17,9 @@ object Config {
   val DB_PASSWORD: String = "password"
   val DB_DRIVER: String = "org.postgresql.Driver"
 
-  val DATASET_PATH="../yelp_dataset"
   // Business
   val BUSINESS_TOPIC: String = "yelp-topic-business"
-  val BUSINESS_JSON_PATH: String = DATASET_PATH + "/yelp_academic_dataset_business.json"
+  val BUSINESS_ARTEFACT_PATH = DATASET_PATH + "/business.parquet"
   val BUSINESS_SCHEMA: StructType = StructType(List(
     StructField("business_id", StringType, true),
     StructField("name", StringType, true),
@@ -37,7 +40,6 @@ object Config {
 
   // Review
   val REVIEW_TOPIC: String = "yelp-topic-review"
-  val REVIEW_JSON_PATH: String = DATASET_PATH + "yelp_academic_dataset_review.json"
   val REVIEW_SCHEMA: StructType = StructType(List(
     StructField("review_id", StringType, true),
     StructField("user_id", StringType, true),
@@ -53,7 +55,7 @@ object Config {
 
   // User
   val USER_TOPIC: String = "yelp-topic-user"
-  val USER_JSON_PATH: String = DATASET_PATH + "/yelp_academic_dataset_user.json"
+  val USER_ARTEFACT_PATH = DATASET_PATH + "/users.parquet"
   val USER_SCHEMA: StructType = StructType(List(
     StructField("user_id", StringType, true),
     StructField("name", StringType, true),
@@ -79,5 +81,4 @@ object Config {
     StructField("compliment_photos", IntegerType, true)
   ))
   val USER_TABLE: String = "user_table"
-
 }

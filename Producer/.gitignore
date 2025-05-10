@@ -10,7 +10,6 @@ output_batches/
 .bloop/
 .metals/
 *.iml
-.bsp
 
 # === Mac/Linux system files ===
 .DS_Store

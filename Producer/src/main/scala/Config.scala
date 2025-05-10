@@ -14,7 +14,8 @@ object Config {
   val DB_DRIVER: String = "org.postgresql.Driver"
 
 
-  val DATASET_PATH="../yelp_dataset/"
+  val DATASET_PATH = sys.env.getOrElse("DATASET_PATH", "../yelp_dataset/")
+  
   // Business
   val BUSINESS_TOPIC: String = "yelp-topic-business"
   val BUSINESS_JSON_PATH: String = DATASET_PATH + "yelp_academic_dataset_business.json"

@@ -1,4 +1,4 @@
-name := "SparkStreamingProject"
+name := "producer"
 
 version := "0.1"
 
