@@ -5,6 +5,6 @@ COPY yelp_dataset/ /yelp_dataset
 
 ENV DATASET_PATH=/yelp_dataset/
 
-COPY target/scala-2.12/producer_2.12-0.1.jar /app/producer.jar
+COPY target/scala-2.12/producer-assembly-0.1.jar /app/producer.jar
 
 CMD ["/opt/spark/bin/spark-submit", "--class", "Producer", "/app/producer.jar"]
