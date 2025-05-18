@@ -40,7 +40,7 @@ object Config {
   val BUSINESS_CHECKPOINT_FILE: String = "output_batches/checkpoint_business.txt"
 
   // Review
-  val REVIEW_TOPIC: String = "yelp-topic-review"
+  val REVIEW_TOPIC: String = "yelp-topic-review-1"
   val REVIEW_JSON_PATH: String = DATASET_PATH + "yelp_academic_dataset_review.json"
   val REVIEW_SCHEMA: StructType = StructType(List(
     StructField("review_id", StringType, true),
@@ -51,7 +51,8 @@ object Config {
     StructField("funny", IntegerType, true),
     StructField("cool", IntegerType, true),
     StructField("text", StringType, true),
-    StructField("date", StringType, true)
+    StructField("date", StringType, true),
+    StructField("id_date", IntegerType, true)  // <-- ajouté ici
   ))
   val REVIEW_TABLE: String = "review_table"
   val REVIEW_OUTPUT_PATH: String = "output_batches/review/"

@@ -1,9 +1,6 @@
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.types.{StructType}
-import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
-import java.util.Properties
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import org.apache.spark.sql.{SparkSession}
+import org.apache.spark.sql.expressions.Window
+import org.apache.spark.sql.functions._
 
 import Config._
 
@@ -12,58 +9,68 @@ object Producer {
 
   def main(args: Array[String]): Unit = {
 
+    // === Paramètres ===
+    val inputPath = REVIEW_JSON_PATH
+    val kafkaBootstrap = BOOTSTRAP_SERVER
+    val topicName = REVIEW_TOPIC
+    val batchSize = 100
+
     val spark = SparkSession.builder()
-      .appName("Producer")
+      .appName("SplitLargeJSONToKafka")
       .master("local[*]")
       .getOrCreate()
 
-    // Producer for Business data
-    // sendJsonToKafka(spark, BUSINESS_JSON_PATH, BUSINESS_SCHEMA, BUSINESS_TOPIC, BOOTSTRAP_SERVER)
+    spark.conf.set("spark.sql.shuffle.partitions", "4")
 
-    // Producer for Review data
-    sendJsonToKafka(spark, REVIEW_JSON_PATH, REVIEW_SCHEMA, REVIEW_TOPIC, BOOTSTRAP_SERVER)
+    // === Lecture JSON ligne-par-ligne ===
+    val df = spark.read
+      .format("json")
+      .load(inputPath)
 
-    // Producer for User data
-    // sendJsonToKafka(spark, USER_JSON_PATH, USER_SCHEMA, USER_TOPIC, BOOTSTRAP_SERVER)
+    val windowSpec = Window.orderBy(col("date").asc)
 
-    // Producer for Tip data
-    // sendJsonToKafka(spark, TIP_JSON_PATH, TIP_SCHEMA, TIP_TOPIC, BOOTSTRAP_SERVER)
+    val indexedDF = df.select(
+      col("review_id"),
+      col("user_id"),
+      col("business_id"),
+      col("stars"),
+      col("useful"),
+      col("funny"),
+      col("text"),
+      col("date"),
+      row_number().over(windowSpec).alias("id_date")
+    )
 
-    spark.stop()
-  }
+    val dfWithBatch = indexedDF.withColumn("batch_id", (col("id_date") - 1) / batchSize)
+    val totalBatches = dfWithBatch.select("batch_id").distinct().count().toInt
 
-  def sendJsonToKafka(spark: SparkSession, path: String, schema: StructType, topic: String, bootstrapServers: String): Unit = {
-    println(s"\n========================================== TOPIC : $topic ==========================================\n")
-    val df = spark.read.schema(schema).json(path)
+    println("\n=============================================================================")
+    println(s"Nombre total de batchs à envoyer à Kafka : $totalBatches")
+    println("=============================================================================\n")
 
-    val props = new Properties()
-    props.put("bootstrap.servers", bootstrapServers)
-    props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer")
-    props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer")
+    for (i <- 0 until totalBatches) {
+        val start = i * batchSize + 1
+        val end = start + batchSize - 1
 
-    val producer = new KafkaProducer[String, String](props)
+        val batchDF = dfWithBatch
+        .filter(col("id_date").between(start, end))
 
-    val mapper = new ObjectMapper()
-    mapper.registerModule(DefaultScalaModule)
+        val kafkaDF = batchDF.selectExpr(
+        "CAST(review_id AS STRING) AS key",
+        "to_json(struct(*)) AS value"
+        )
 
-    val rows = df.toLocalIterator()
+        kafkaDF.write
+            .format("kafka")
+            .option("kafka.bootstrap.servers", kafkaBootstrap)
+            .option("topic", topicName)
+            .option("checkpointLocation", s"/tmp/kafka-checkpoint-batch-$i") // checkpoint unique par batch
+            .save()
 
-    var index = 0
-
-    while (rows.hasNext) {
-      val row = rows.next()
-      val rowMap = row.getValuesMap[Any](row.schema.fieldNames)
-      val jsonString = mapper.writeValueAsString(rowMap)
-
-      val record = new ProducerRecord[String, String](topic, s"record_$index", jsonString)
-      producer.send(record)
-
-      println(s"record_$index sent")
-      index += 1
-
-      Thread.sleep(5000)
+        println(s"✔ Batch $i envoyé dans le topic Kafka '$topicName'")
     }
 
-    producer.close()
+    spark.stop()
+    println("✅ Tous les batchs ont été envoyés à Kafka.")
   }
 }
