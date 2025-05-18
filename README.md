@@ -18,3 +18,6 @@ sbt clean
 
 docker-compose down --volumes --remove-orphans
 docker system prune -a --volumes
+
+# change java version and select 11
+sudo update-alternatives --config java

@@ -8,7 +8,7 @@ import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import Config._
 
 
-object Main {
+object Producer {
 
   def main(args: Array[String]): Unit = {
 
