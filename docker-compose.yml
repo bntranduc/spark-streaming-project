@@ -20,20 +20,6 @@ services:
     networks:
       - mynetwork
 
-  postgres:
-    image: postgres:15
-    restart: always
-    environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: mydatabase
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - mynetwork
-
   producer:
     build:
       context: ./Producer
@@ -48,19 +34,7 @@ services:
       context: ./Consumer
       dockerfile: Dockerfile
     depends_on:
-      - kafka
-      - postgres
-    networks:
-      - mynetwork
-
-  datavisualisation:
-    build:
-      context: ./DataVisualisation
-      dockerfile: Dockerfile
-    ports:
-      - "8501:8501"
-    depends_on:
-      - postgres
+      - producer
     networks:
       - mynetwork
 

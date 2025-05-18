@@ -9,7 +9,8 @@ object Config {
   val USER_JSON_PATH: String = DATASET_PATH + "/yelp_academic_dataset_user.json"
 
   // Kafka
-  val BOOTSTRAP_SERVER: String = "localhost:9092"
+  //val BOOTSTRAP_SERVER: String = "localhost:9092"
+  val BOOTSTRAP_SERVER: String = "kafka:9092"
 
   // Base de données
   val DB_URL: String = "jdbc:postgresql://localhost:5432/mydatabase"
