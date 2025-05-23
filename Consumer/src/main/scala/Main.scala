@@ -36,7 +36,7 @@ object Consumer {
     println(usersDF.columns.mkString("Array(", ", ", ")"))
     println(businessDF.columns.mkString("Array(", ", ", ")"))
 
-    consumeKafkaTopic(spark, REVIEW_TOPIC, REVIEW_SCHEMA, REVIEW_TABLE)
+    consumeKafkaTopic(spark, REVIEW_TOPIC, REVIEW_SCHEMA, REVIEW_TABLE, businessDF)
 
     spark.streams.awaitAnyTermination()
   }
@@ -73,7 +73,7 @@ object Consumer {
     }
   }
 
-  def consumeKafkaTopic(spark: SparkSession, topic: String, schema: StructType, tableName: String): Unit = {
+  def consumeKafkaTopic(spark: SparkSession, topic: String, schema: StructType, tableName: String, businessDF: DataFrame): Unit = {
     val kafkaStreamDF: DataFrame = spark.readStream
       .format("kafka")
       .option("kafka.bootstrap.servers", BOOTSTRAP_SERVER)
@@ -89,17 +89,40 @@ object Consumer {
 
     parsedMessages.writeStream
       .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
-        println(s"================================ Batch $batchId reçu - taille = ${batchDF.count()} ================================")
-        batchDF.write
+
+        // 1. Statistiques agrégées
+        val starsPerHour = batchDF
+          .withColumn("hour", hour(to_timestamp(col("date"))))
+          .groupBy("hour")
+          .agg(avg("stars").alias("avg_stars"))
+
+        val reviewsPerCity = batchDF
+          .join(businessDF, Seq("business_id"), "left")
+          .groupBy("city")
+          .agg(count("*").alias("review_count"))
+
+        // 2. Insertion dans PostgreSQL
+        starsPerHour.write
           .format("jdbc")
           .option("url", DB_URL)
-          .option("dbtable", tableName)
+          .option("dbtable", "stats_avg_stars_per_hour")
           .option("user", DB_USER)
           .option("password", DB_PASSWORD)
           .option("driver", DB_DRIVER)
           .mode("append")
           .save()
-        batchDF.show(truncate = false)
+
+        reviewsPerCity.write
+          .format("jdbc")
+          .option("url", DB_URL)
+          .option("dbtable", "stats_reviews_per_city")
+          .option("user", DB_USER)
+          .option("password", DB_PASSWORD)
+          .option("driver", DB_DRIVER)
+          .mode("append")
+          .save()
+
+        println(s"✅ Batch $batchId traité et statistiques insérées.")
       }
       .outputMode("append")
       .start()
