@@ -1,7 +1,11 @@
 # === Scala / SBT / Spark ===
 target/
-project/target/
-project/project/
+
+project/build.properties        
+project/Dependencies.scala
+project/target
+project/plugins.sbt
+
 output_batches/
 
 # === IDEs ===

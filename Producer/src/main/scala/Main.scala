@@ -56,15 +56,15 @@ object Producer {
         .filter(col("id_date").between(start, end))
 
         val kafkaDF = batchDF.selectExpr(
-        "CAST(review_id AS STRING) AS key",
-        "to_json(struct(*)) AS value"
+          "CAST(review_id AS STRING) AS key",
+          "to_json(struct(*)) AS value"
         )
 
         kafkaDF.write
             .format("kafka")
             .option("kafka.bootstrap.servers", kafkaBootstrap)
             .option("topic", topicName)
-            .option("checkpointLocation", s"/tmp/kafka-checkpoint-batch-$i") // checkpoint unique par batch
+            .option("checkpointLocation", s"/tmp/kafka-checkpoint-batch-$i")
             .save()
 
         println(s"✔ Batch $i envoyé dans le topic Kafka '$topicName'")
