@@ -2,14 +2,13 @@ import org.apache.spark.sql.types._
 
 object Config {
   //Dataset path
-  val DATASET_PATH = sys.env.getOrElse("DATASET_PATH", "yelp_dataset")
+  val DATASET_PATH = sys.env.getOrElse("DATASET_PATH", "../yelp_dataset")
   
   val BUSINESS_JSON_PATH: String = DATASET_PATH + "/yelp_academic_dataset_business.json"
-  val REVIEW_JSON_PATH: String = DATASET_PATH + "yelp_academic_dataset_review.json"
   val USER_JSON_PATH: String = DATASET_PATH + "/yelp_academic_dataset_user.json"
 
   // Kafka
-  val BOOTSTRAP_SERVER = sys.env.getOrElse("BOOTSTRAP_SERVER", "kafka:9092")
+  val BOOTSTRAP_SERVER = sys.env.getOrElse("BOOTSTRAP_SERVER", "localhost:9092")
 
   // Base de données
   val DB_URL: String = "jdbc:postgresql://localhost:5432/mydatabase"

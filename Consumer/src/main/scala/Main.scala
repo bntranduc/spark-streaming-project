@@ -87,11 +87,23 @@ object Consumer {
       from_json(col("value"), schema).as("data")
     ).select("data.*")
 
-    // Démarrer les streams
     parsedMessages.writeStream
+      .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
+        println(s"================================ Batch $batchId reçu - taille = ${batchDF.count()} ================================")
+        batchDF.write
+          .format("jdbc")
+          .option("url", DB_URL)
+          .option("dbtable", tableName)
+          .option("user", DB_USER)
+          .option("password", DB_PASSWORD)
+          .option("driver", DB_DRIVER)
+          .mode("append")
+          .save()
+        batchDF.show(truncate = false)
+      }
       .outputMode("append")
-      .format("console")
       .start()
       .awaitTermination()
+
   }
 }
