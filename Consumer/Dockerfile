@@ -1,12 +1,32 @@
-FROM apache/spark:3.5.1-scala2.12-java11-ubuntu
+# Étape 1 : Build
+FROM hseeberger/scala-sbt:11.0.19_1.8.2_2.12.15 AS builder
 
 WORKDIR /app
-COPY yelp_dataset/ /yelp_dataset
 
-ENV DATASET_PATH=/yelp_dataset/
+# Copier tout le projet
+COPY . .
 
-ENV BOOTSTRAP_SERVER="kafka:9092"
+# Compiler et créer le JAR
+RUN sbt clean assembly
 
-COPY target/scala-2.12/consumer-assembly-0.1.jar /app/consumer.jar
+# Étape 2 : Image finale
+FROM openjdk:11-jre-slim
 
-# CMD ["/opt/spark/bin/spark-submit", "--class", "Consumer", "/app/consumer.jar"]
+ENV SPARK_VERSION=3.5.0
+ENV HADOOP_VERSION=3
+ENV SPARK_HOME=/opt/spark
+ENV PATH=$SPARK_HOME/bin:$PATH
+
+# Installer Spark
+RUN apt-get update && apt-get install -y curl && \
+    curl -L https://downloads.apache.org/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz | tar xz && \
+    mv spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION} /opt/spark && \
+    apt-get clean
+
+WORKDIR /app
+
+# Copier le JAR compilé
+COPY --from=builder /app/target/scala-2.12/app.jar .
+
+# Lancer Spark
+CMD ["spark-submit", "--class", "Main", "--master", "local[*]", "app.jar"]

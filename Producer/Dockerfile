@@ -1,12 +1,22 @@
-FROM apache/spark:3.5.1-scala2.12-java11-ubuntu
+# Étape 1 : Compilation
+FROM sbtscala/scala-sbt:eclipse-temurin-focal-11.0.22_7_1.9.9_2.12.19 AS builder
 
 WORKDIR /app
-COPY yelp_dataset/ /yelp_dataset
+COPY . .
+RUN sbt clean assembly
 
-ENV DATASET_PATH=/yelp_dataset/
+# Étape 2 : Exécution
+FROM openjdk:11.0.11-jre-slim
 
-ENV BOOTSTRAP_SERVER="kafka:9092"
+RUN apt-get update && \
+    apt-get install -y curl && \
+    curl -fLo spark.tgz https://dlcdn.apache.org/spark/spark-3.5.5/spark-3.5.5-bin-hadoop3.tgz && \
+    tar -xzf spark.tgz && \
+    mv spark-3.5.5-bin-hadoop3 /opt/spark && \
+    rm spark.tgz && \
+    apt-get clean
 
-COPY target/scala-2.12/producer-assembly-0.1.jar /app/producer.jar
+WORKDIR /app
+COPY --from=builder /app/target/scala-2.12/app.jar .
 
-# CMD ["/opt/spark/bin/spark-submit", "--class", "Producer", "/app/producer.jar"]
+CMD ["spark-submit", "--class", "Main", "--master", "local[*]", "app.jar"]

@@ -21,3 +21,6 @@ docker system prune -a --volumes
 
 # change java version and select 11
 sudo update-alternatives --config java
+
+## Se connecter a la bdd de docker
+psql -h localhost -p 5432 -U user -d mydatabase

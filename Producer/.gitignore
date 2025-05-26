@@ -1,8 +1,7 @@
 # === Scala / SBT / Spark ===
 target/
-project/target/
-project/project/
-output_batches/
+project/project
+project/target
 
 # === IDEs ===
 .idea/

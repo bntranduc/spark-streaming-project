@@ -1,12 +1,9 @@
 # === Scala / SBT / Spark ===
 target/
 
-project/build.properties        
+project/project
 project/Dependencies.scala
 project/target
-project/plugins.sbt
-
-output_batches/
 
 # === IDEs ===
 .idea/
