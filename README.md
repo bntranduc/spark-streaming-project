@@ -24,3 +24,6 @@ sudo update-alternatives --config java
 
 ## Se connecter a la bdd de docker
 psql -h localhost -p 5432 -U user -d mydatabase
+
+# Commande Docker Compose complète pour tout réinitialiser 
+docker compose down --volumes --remove-orphans --rmi all

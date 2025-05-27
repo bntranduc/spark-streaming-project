@@ -5,8 +5,7 @@ object Config {
   val BATCH_SIZE = 1000
 
   // Kafka
-  //val BOOTSTRAP_SERVER: String = ""
-  val BOOTSTRAP_SERVER = sys.env.getOrElse("DATASET_PATH", "localhost:9092")
+  val BOOTSTRAP_SERVER = sys.env.getOrElse("KAFKA_HOST", "localhost:9092")
 
   // Base de données
   val DB_URL: String = "jdbc:postgresql://localhost:5432/mydatabase"
