@@ -54,9 +54,6 @@ object Config {
   val USER_TABLE: String = "user_table"
 
   // top Business
-  val TOP_FUN_BUSINESS_SCHEMA: StructType = StructType(List(
-    StructField("business_id", StringType, true),
-    StructField("total_useful", IntegerType, true)
-  ))
   val TOP_FUN_BUSINESS_TABLE: String = "top_fun_business_table"
+  val TOP_USEFULL_USER_TABLE: String = "top_usefull_user_table"
 }

@@ -65,4 +65,11 @@ object UpdateDatabse {
         .save()
     }
 
+    def updateTopUsefullUserTable(spark: SparkSession, topUsers: DataFrame): Unit = {
+      topUsers.write
+        .format("jdbc")
+        .options(dbOptions + ("dbtable" -> TOP_USEFULL_USER_TABLE))
+        .mode("overwrite")
+        .save()
+    }
 }

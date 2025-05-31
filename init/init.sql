@@ -1,3 +1,8 @@
+\c postgres
+DROP DATABASE spark_streaming_db;
+CREATE DATABASE spark_streaming_db;
+\c spark_streaming_db
+
 -- Table business
 CREATE TABLE business_table (
     business_id     TEXT PRIMARY KEY,
@@ -33,8 +38,19 @@ CREATE TABLE category_table (
     category    VARCHAR(255)
 );
 
--- Table top_fun_table
+-- Table top_fun_business_table
 CREATE TABLE top_fun_business_table (
-    business_id VARCHAR(64),
+    business_id     TEXT PRIMARY KEY,
+    name            VARCHAR(255),
+    city            VARCHAR(100),
+    state           VARCHAR(50),
+    categories      TEXT,
+    total_useful    INTEGER
+);
+
+-- Table top_fun_business_table
+CREATE TABLE top_usefull_user_table (
+    user_id             TEXT PRIMARY KEY,
+    name                VARCHAR(255),
     total_useful    INTEGER
 );

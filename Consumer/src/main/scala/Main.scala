@@ -4,8 +4,8 @@ import org.apache.spark.sql.types._
 import org.apache.spark.sql.Row
 
 import Config._
-import StatsProcessor.processTopFunBusiness
 import DataSourceReader.loadOrCreateArtefactSafe
+import StatsProcessor.{processTopFunBusiness, processTopUsefullUser}
 import UpdateDatabse.{updateUserTable, updateBusinessTable, updateReviewTable}
 
 object Consumer {
@@ -37,14 +37,10 @@ object Consumer {
       "orc"
     )
 
-    // println(usersDF.columns.mkString("Array(", ", ", ")"))
-    // println(businessDF.columns.mkString("Array(", ", ", ")"))
-
     consumeKafkaTopic(spark, businessDF, usersDF)
 
     spark.streams.awaitAnyTermination()
   }
-
 
   def consumeKafkaTopic(spark: SparkSession, businessDF: DataFrame, usersDF: DataFrame): Unit = {
     val kafkaStreamDF: DataFrame = spark.readStream
@@ -70,15 +66,6 @@ object Consumer {
     parsedMessages.writeStream
       .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
 
-
-        val df_review_dba = spark.read
-          .format("jdbc")
-          .options(dbOptions + ("dbtable" -> REVIEW_TABLE))
-          .load()
-          .select("business_id", "useful")
-        
-        println("de=",df_review_dba.count())
-
         val df_review_db = spark.read
           .format("jdbc")
           .options(dbOptions + ("dbtable" -> REVIEW_TABLE))
@@ -87,13 +74,17 @@ object Consumer {
 
         val new_reviews = batchDF
           .join(df_review_db, Seq("review_id"), "left_anti").distinct()
-        
-        println("b=", batchDF.count())
+
+        println("batchDF =", batchDF.count())
+        println("new_reviews =", batchDF.count())
+        println("review_db =", df_review_db.count())
 
         updateUserTable(spark, new_reviews, usersDF)
         updateBusinessTable(spark, new_reviews, businessDF)
         updateReviewTable(new_reviews)
+
         processTopFunBusiness(spark)
+        processTopUsefullUser(spark)
 
         println(s"✅ Batch $batchId traité et statistiques insérées.")
       }
