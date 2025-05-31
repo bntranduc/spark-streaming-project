@@ -19,13 +19,13 @@ object Config {
   val DB_DRIVER: String = "org.postgresql.Driver"
 
   // Business
-  val BUSINESS_TOPIC: String = "yelp-topic-business"
   val BUSINESS_ARTEFACT_PATH = DATASET_PATH + "/business.parquet"
   val BUSINESS_SCHEMA: StructType = StructType(List(
     StructField("business_id", StringType, true),
     StructField("name", StringType, true),
     StructField("city", StringType, true),
     StructField("state", StringType, true),
+    StructField("categories", StringType, true),
   ))
   val BUSINESS_TABLE: String = "business_table"
 
@@ -46,11 +46,17 @@ object Config {
   val REVIEW_TABLE: String = "review_table"
 
   // User
-  val USER_TOPIC: String = "yelp-topic-user"
   val USER_ARTEFACT_PATH = DATASET_PATH + "/users.parquet"
   val USER_SCHEMA: StructType = StructType(List(
     StructField("user_id", StringType, true),
     StructField("name", StringType, true)
   ))
   val USER_TABLE: String = "user_table"
+
+  // top Business
+  val TOP_FUN_BUSINESS_SCHEMA: StructType = StructType(List(
+    StructField("business_id", StringType, true),
+    StructField("total_useful", IntegerType, true)
+  ))
+  val TOP_FUN_BUSINESS_TABLE: String = "top_fun_business_table"
 }

@@ -3,7 +3,8 @@ CREATE TABLE business_table (
     business_id     TEXT PRIMARY KEY,
     name            VARCHAR(255),
     city            VARCHAR(100),
-    state           VARCHAR(50)
+    state           VARCHAR(50),
+    categories      TEXT
 );
 
 -- Table review
@@ -30,4 +31,10 @@ CREATE TABLE user_table (
 CREATE TABLE category_table (
     business_id VARCHAR(64),
     category    VARCHAR(255)
+);
+
+-- Table top_fun_table
+CREATE TABLE top_fun_business_table (
+    business_id VARCHAR(64),
+    total_useful    INTEGER
 );
