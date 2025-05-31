@@ -10,9 +10,12 @@ object Config {
   val BOOTSTRAP_SERVER = sys.env.getOrElse("KAFKA_HOST", "localhost:9092")
 
   // Base de données
-  val DB_URL: String = "jdbc:postgresql://localhost:5432/mydatabase"
-  val DB_USER: String = "user"
-  val DB_PASSWORD: String = "password"
+  val DB_USER: String = sys.env.getOrElse("DATABASE_USER", "divinandretomadam")
+  val DB_PASSWORD: String = sys.env.getOrElse("DATABASE_PASSWORD", "oDAnmvidrTnmeiAa")
+  val DB_NAME: String = sys.env.getOrElse("DATABASE_NAME", "spark_streaming_db")
+  val DB_HOST: String = sys.env.getOrElse("DATABASE_HOST", "localhost")
+  val DB_PORT: String = sys.env.getOrElse("DATABASE_PORT", "5432")
+  val DB_URL: String = s"jdbc:postgresql://$DB_HOST:$DB_PORT/$DB_NAME"
   val DB_DRIVER: String = "org.postgresql.Driver"
 
   // Business
@@ -21,18 +24,8 @@ object Config {
   val BUSINESS_SCHEMA: StructType = StructType(List(
     StructField("business_id", StringType, true),
     StructField("name", StringType, true),
-    StructField("address", StringType, true),
     StructField("city", StringType, true),
     StructField("state", StringType, true),
-    StructField("postal_code", StringType, true),
-    StructField("latitude", DoubleType, true),
-    StructField("longitude", DoubleType, true),
-    StructField("stars", DoubleType, true),
-    StructField("review_count", IntegerType, true),
-    StructField("is_open", IntegerType, true),
-    StructField("attributes", StringType, true),
-    StructField("categories", StringType, true),
-    StructField("hours", StringType, true)
   ))
   val BUSINESS_TABLE: String = "business_table"
 
@@ -48,7 +41,7 @@ object Config {
     StructField("cool", IntegerType, true),
     StructField("text", StringType, true),
     StructField("date", StringType, true),
-    StructField("id_date", IntegerType, true)  // <-- ajouté ici
+    StructField("id_date", IntegerType, true)
   ))
   val REVIEW_TABLE: String = "review_table"
 
@@ -57,27 +50,7 @@ object Config {
   val USER_ARTEFACT_PATH = DATASET_PATH + "/users.parquet"
   val USER_SCHEMA: StructType = StructType(List(
     StructField("user_id", StringType, true),
-    StructField("name", StringType, true),
-    StructField("review_count", IntegerType, true),
-    StructField("yelping_since", StringType, true),
-    StructField("useful", IntegerType, true),
-    StructField("funny", IntegerType, true),
-    StructField("cool", IntegerType, true),
-    StructField("elite", StringType, true),
-    StructField("friends", StringType, true),
-    StructField("fans", IntegerType, true),
-    StructField("average_stars", DoubleType, true),
-    StructField("compliment_hot", IntegerType, true),
-    StructField("compliment_more", IntegerType, true),
-    StructField("compliment_profile", IntegerType, true),
-    StructField("compliment_cute", IntegerType, true),
-    StructField("compliment_list", IntegerType, true),
-    StructField("compliment_note", IntegerType, true),
-    StructField("compliment_plain", IntegerType, true),
-    StructField("compliment_cool", IntegerType, true),
-    StructField("compliment_funny", IntegerType, true),
-    StructField("compliment_writer", IntegerType, true),
-    StructField("compliment_photos", IntegerType, true)
+    StructField("name", StringType, true)
   ))
   val USER_TABLE: String = "user_table"
 }

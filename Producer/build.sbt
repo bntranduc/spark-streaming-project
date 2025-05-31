@@ -4,7 +4,7 @@ version := "0.1"
 
 scalaVersion := "2.12.18"
 
-enablePlugins(AssemblyPlugin)
+// enablePlugins(AssemblyPlugin)
 
 val sparkVersion = "3.5.1"
 val kafkaVersion = "3.6.1"
@@ -27,12 +27,3 @@ Compile / compile / scalacOptions ++= Seq(
   "-unchecked",
   "-encoding", "utf8"
 )
-
-import sbtassembly.AssemblyPlugin.autoImport._
-
-assemblyMergeStrategy in assembly := {
-  case PathList("META-INF", "io.netty.versions.properties") => MergeStrategy.discard
-  case PathList("META-INF", xs @ _*) => MergeStrategy.discard
-  case "reference.conf" => MergeStrategy.concat
-  case _ => MergeStrategy.first
-}

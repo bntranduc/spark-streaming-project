@@ -1,6 +1,7 @@
 import org.apache.spark.sql.{SparkSession, DataFrame}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
+import org.apache.spark.sql.Row
 
 import Config._
 
@@ -13,7 +14,7 @@ object Consumer {
       .master("local[*]")
       .getOrCreate()
 
-    spark.sparkContext.setLogLevel("WARN")
+    spark.sparkContext.setLogLevel("ERROR")
 
     val usersDF = loadOrCreateArtefactSafe(
       spark,
@@ -33,10 +34,10 @@ object Consumer {
       "orc"
     )
 
-    println(usersDF.columns.mkString("Array(", ", ", ")"))
-    println(businessDF.columns.mkString("Array(", ", ", ")"))
+    // println(usersDF.columns.mkString("Array(", ", ", ")"))
+    // println(businessDF.columns.mkString("Array(", ", ", ")"))
 
-    consumeKafkaTopic(spark, REVIEW_TOPIC, REVIEW_SCHEMA, REVIEW_TABLE, businessDF)
+    consumeKafkaTopic(spark, businessDF, usersDF)
 
     spark.streams.awaitAnyTermination()
   }
@@ -73,52 +74,78 @@ object Consumer {
     }
   }
 
-  def consumeKafkaTopic(spark: SparkSession, topic: String, schema: StructType, tableName: String, businessDF: DataFrame): Unit = {
+  def consumeKafkaTopic(spark: SparkSession, businessDF: DataFrame, usersDF: DataFrame): Unit = {
     val kafkaStreamDF: DataFrame = spark.readStream
       .format("kafka")
       .option("kafka.bootstrap.servers", BOOTSTRAP_SERVER)
-      .option("subscribe", topic)
+      .option("subscribe", REVIEW_TOPIC)
       .option("startingOffsets", "earliest")
       .load()
 
     val messages = kafkaStreamDF.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)")
 
     val parsedMessages = messages.select(
-      from_json(col("value"), schema).as("data")
+      from_json(col("value"), REVIEW_SCHEMA).as("data")
     ).select("data.*")
+
+    val dbOptions = Map(
+      "url" -> DB_URL,
+      "user" -> DB_USER,
+      "password" -> DB_PASSWORD,
+      "driver" -> DB_DRIVER
+    )
 
     parsedMessages.writeStream
       .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
 
-        // 1. Statistiques agrégées
-        val starsPerHour = batchDF
-          .withColumn("hour", hour(to_timestamp(col("date"))))
-          .groupBy("hour")
-          .agg(avg("stars").alias("avg_stars"))
-
-        val reviewsPerCity = batchDF
-          .join(businessDF, Seq("business_id"), "left")
-          .groupBy("city")
-          .agg(count("*").alias("review_count"))
-
-        // 2. Insertion dans PostgreSQL
-        starsPerHour.write
+        val df_users_db = spark.read
           .format("jdbc")
-          .option("url", DB_URL)
-          .option("dbtable", "stats_avg_stars_per_hour")
-          .option("user", DB_USER)
-          .option("password", DB_PASSWORD)
-          .option("driver", DB_DRIVER)
+          .options(dbOptions + ("dbtable" -> USER_TABLE))
+          .load()
+          .select("user_id")
+
+        val df_business_db = spark.read
+          .format("jdbc")
+          .options(dbOptions + ("dbtable" -> BUSINESS_TABLE))
+          .load()
+          .select("business_id")
+
+        val df_review_db = spark.read
+          .format("jdbc")
+          .options(dbOptions + ("dbtable" -> REVIEW_TABLE))
+          .load()
+          .select("review_id")
+
+        val new_reviews = batchDF
+          .join(df_review_db, Seq("review_id"), "left_anti").distinct()
+
+        val new_users_ids = new_reviews.select("user_id")
+            .join(df_users_db, Seq("user_id"), "left_anti").distinct()
+
+        val new_business_ids = new_reviews.select("business_id")
+            .join(df_business_db, Seq("business_id"), "left_anti").distinct()
+
+        val new_users = usersDF
+          .join(new_users_ids, Seq("user_id"), "inner")
+
+        val new_business = businessDF
+          .join(new_business_ids, Seq("business_id"), "inner")
+        
+        new_users.write
+          .format("jdbc")
+          .options(dbOptions + ("dbtable" -> USER_TABLE))
           .mode("append")
           .save()
 
-        reviewsPerCity.write
+        new_business.write
           .format("jdbc")
-          .option("url", DB_URL)
-          .option("dbtable", "stats_reviews_per_city")
-          .option("user", DB_USER)
-          .option("password", DB_PASSWORD)
-          .option("driver", DB_DRIVER)
+          .options(dbOptions + ("dbtable" -> BUSINESS_TABLE))
+          .mode("append")
+          .save()
+        
+        new_reviews.write
+          .format("jdbc")
+          .options(dbOptions + ("dbtable" -> REVIEW_TABLE))
           .mode("append")
           .save()
 
@@ -127,6 +154,5 @@ object Consumer {
       .outputMode("append")
       .start()
       .awaitTermination()
-
   }
 }

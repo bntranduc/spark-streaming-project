@@ -4,7 +4,7 @@ version := "0.1"
 
 scalaVersion := "2.12.18"
 
-enablePlugins(AssemblyPlugin)
+// enablePlugins(AssemblyPlugin)
 
 val sparkVersion = "3.5.0"
 val kafkaVersion = "3.6.1"
@@ -30,7 +30,7 @@ Compile / compile / scalacOptions ++= Seq(
 )
 
 // Assembly options
-assembly / assemblyMergeStrategy := {
-  case PathList("META-INF", xs @ _*) => MergeStrategy.discard
-  case x => MergeStrategy.first
-}
+// assembly / assemblyMergeStrategy := {
+//   case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+//   case x => MergeStrategy.first
+// }
