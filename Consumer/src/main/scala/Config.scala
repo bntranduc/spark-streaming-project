@@ -25,6 +25,7 @@ object Config {
     StructField("name", StringType, true),
     StructField("city", StringType, true),
     StructField("state", StringType, true),
+    StructField("is_open", IntegerType, true),
     StructField("categories", StringType, true),
   ))
   val BUSINESS_TABLE: String = "business_table"
@@ -49,6 +50,10 @@ object Config {
   val USER_ARTEFACT_PATH = DATASET_PATH + "/users.parquet"
   val USER_SCHEMA: StructType = StructType(List(
     StructField("user_id", StringType, true),
+    StructField("friends", StringType, true),
+    StructField("elite", StringType, true),
+    StructField("fans", IntegerType, true),
+    StructField("yelping_since", StringType, true),
     StructField("name", StringType, true)
   ))
   val USER_TABLE: String = "user_table"
@@ -57,4 +62,11 @@ object Config {
   val TOP_FUN_BUSINESS_TABLE: String = "top_fun_business_table"
   val TOP_USEFULL_USER_TABLE: String = "top_usefull_user_table"
   val TOP_FAITHFUL_USER_TABLE: String = "top_faithful_user_table"
+  val TOP_RATED_BY_CATEGORY_TABLE: String = "top_rated_by_category_table"
+  val TOP_POPULAR_BUSINESS_MONTHLY_TABLE: String = "top_popular_business_monthly_table"
+  val TOP_POPULAR_USER_TABLE: String = "top_popular_user_table"
+  val APEX_PREDATOR_USER_TABLE: String = "apex_predator_user_table"
+  val CLOSED_BUSINESS_RATING_STATS_TABLE: String = "closed_business_rating_stats_table"
+  val ACTIVITY_EVOLUTION_TABLE: String = "activity_evolution_table"
+  val ELITE_IMPACT_TABLE: String = "elite_impact_on_rating_table"
 }

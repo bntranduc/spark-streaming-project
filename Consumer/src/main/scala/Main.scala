@@ -6,7 +6,18 @@ import org.apache.spark.sql.Row
 import Config._
 import DataSourceReader.loadOrCreateArtefactSafe
 import UpdateDatabse.{updateUserTable, updateBusinessTable, updateReviewTable}
-import StatsProcessor.{processTopFunBusiness, processTopUsefulUser, processMostFaithfulUsersPerBusiness}
+import StatsProcessor.{
+  processTopFunBusiness,
+  processTopUsefulUser,
+  processMostFaithfulUsersPerBusiness,
+  processTopRatedBusinessByCategory,
+  processTopPopularBusinessByMonth,
+  processTopPopularUsers,
+  processApexPredatorUsers,
+  processClosedBusinessRatingStats,
+  processActivityEvolution,
+  processEliteImpactOnRatings
+}
 
 object Consumer {
 
@@ -24,7 +35,7 @@ object Consumer {
       USER_JSON_PATH,
       USER_ARTEFACT_PATH,
       USER_SCHEMA,
-      Seq("user_id", "name"),
+      Seq("user_id", "name", "fans", "elite", "friends", "yelping_since"),
       "orc"
     )
 
@@ -33,7 +44,7 @@ object Consumer {
       BUSINESS_JSON_PATH,
       BUSINESS_ARTEFACT_PATH,
       BUSINESS_SCHEMA,
-      Seq("business_id", "name", "city", "state", "categories"),
+      Seq("business_id", "name", "city", "state", "categories", "is_Open"),
       "orc"
     )
 
@@ -75,9 +86,12 @@ object Consumer {
         val new_reviews = batchDF
           .join(df_review_db, Seq("review_id"), "left_anti").distinct()
 
-        println("batchDF =", batchDF.count())
-        println("new_reviews =", batchDF.count())
-        println("review_db =", df_review_db.count())
+        // println("batchDF =", batchDF.count())
+        // println("new_reviews =", batchDF.count())
+        // println("review_db =", df_review_db.count())
+
+        // usersDF.show()
+        // businessDF.show()
 
         updateUserTable(spark, new_reviews, usersDF)
         updateBusinessTable(spark, new_reviews, businessDF)
@@ -86,7 +100,15 @@ object Consumer {
         processTopFunBusiness(spark)
         processTopUsefulUser(spark)
         processMostFaithfulUsersPerBusiness(spark)
+        processTopRatedBusinessByCategory(spark)
+        processTopPopularBusinessByMonth(spark)
+        processTopPopularUsers(spark)
+        processApexPredatorUsers(spark)
+        processClosedBusinessRatingStats(spark)
+        processActivityEvolution(spark)
+        processEliteImpactOnRatings(spark)
 
+        
         println(s"✅ Batch $batchId traité et statistiques insérées.")
       }
       .outputMode("append")

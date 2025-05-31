@@ -80,4 +80,65 @@ object UpdateDatabse {
         .mode("overwrite")
         .save()
     }
+    
+    def updateTopRatedByCategoryTable(spark: SparkSession, topRatedDF: DataFrame): Unit = {
+        topRatedDF.write
+            .format("jdbc")
+            .options(dbOptions + ("dbtable" -> TOP_RATED_BY_CATEGORY_TABLE))
+            .mode("overwrite")
+            .save()
+    }
+    
+    def updateTopPopularBusinessByMonth(spark: SparkSession, rankedDF: DataFrame): Unit = {
+        rankedDF.write
+            .format("jdbc")
+            .options(dbOptions + ("dbtable" -> TOP_POPULAR_BUSINESS_MONTHLY_TABLE))
+            .mode("overwrite")
+            .save()
+    }
+    
+    def updateTopPopularUserTable(spark: SparkSession, topUsers: DataFrame): Unit = {
+        topUsers
+            .select("user_id", "name", "fans", "friends_count", "rank")
+            .withColumnRenamed("friends_count", "friends")
+            .write
+            .format("jdbc")
+            .options(dbOptions + ("dbtable" -> TOP_POPULAR_USER_TABLE))
+            .mode("overwrite")
+            .save()
+    }
+    def updateApexPredatorUserTable(spark: SparkSession, apexUsers: DataFrame): Unit = {
+        apexUsers
+          .select("user_id", "name", "elite_years")
+          .write
+          .format("jdbc")
+          .options(dbOptions + ("dbtable" -> APEX_PREDATOR_USER_TABLE))
+          .mode("overwrite")
+          .save()
+    }
+    
+    def updateClosedBusinessRatingStatsTable(spark: SparkSession, result: DataFrame): Unit = {
+        result.write
+            .format("jdbc")
+            .options(dbOptions + ("dbtable" -> CLOSED_BUSINESS_RATING_STATS_TABLE))
+            .mode("overwrite")
+            .save()
+    }
+    
+    def updateActivityEvolutionTable(spark: SparkSession, result: DataFrame): Unit = {
+        result.write
+            .format("jdbc")
+            .options(dbOptions + ("dbtable" -> ACTIVITY_EVOLUTION_TABLE))
+            .mode("overwrite")
+            .save()
+    }
+    
+    def updateEliteImpactTable(spark: SparkSession, result: DataFrame): Unit = {
+        result.write
+            .format("jdbc")
+            .options(dbOptions + ("dbtable" -> ELITE_IMPACT_TABLE))
+            .mode("overwrite")
+            .save()
+    }
+
 }
