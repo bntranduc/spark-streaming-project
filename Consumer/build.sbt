@@ -6,8 +6,8 @@ scalaVersion := "2.12.18"
 
 // enablePlugins(AssemblyPlugin)
 
-val sparkVersion = "3.5.0"
-val kafkaVersion = "3.6.1"
+val sparkVersion = "3.4.4"
+val kafkaVersion = "3.7.0"
 val mysqlVersion = "8.0.33"
 val postgresVersion = "42.7.1"
 

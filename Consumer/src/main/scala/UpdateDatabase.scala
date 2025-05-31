@@ -72,4 +72,12 @@ object UpdateDatabse {
         .mode("overwrite")
         .save()
     }
+
+    def updateMostFaithfulUsersTable(spark: SparkSession, mostFaithfulUser: DataFrame) {
+      mostFaithfulUser.write
+        .format("jdbc")
+        .options(dbOptions + ("dbtable" -> TOP_FAITHFUL_USER_TABLE))
+        .mode("overwrite")
+        .save()
+    }
 }

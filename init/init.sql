@@ -40,11 +40,7 @@ CREATE TABLE category_table (
 
 -- Table top_fun_business_table
 CREATE TABLE top_fun_business_table (
-    business_id     TEXT PRIMARY KEY,
-    name            VARCHAR(255),
-    city            VARCHAR(100),
-    state           VARCHAR(50),
-    categories      TEXT,
+    business_id VARCHAR(64),
     total_useful    INTEGER
 );
 
@@ -53,4 +49,12 @@ CREATE TABLE top_usefull_user_table (
     user_id             TEXT PRIMARY KEY,
     name                VARCHAR(255),
     total_useful    INTEGER
+);
+
+-- Table top_faithful_user_table
+CREATE TABLE top_faithful_user_table (
+    user_id             VARCHAR(64),
+    business_id VARCHAR(64),
+    review_count    INTEGER,
+    rank    INTEGER
 );

@@ -5,8 +5,8 @@ import org.apache.spark.sql.Row
 
 import Config._
 import DataSourceReader.loadOrCreateArtefactSafe
-import StatsProcessor.{processTopFunBusiness, processTopUsefullUser}
 import UpdateDatabse.{updateUserTable, updateBusinessTable, updateReviewTable}
+import StatsProcessor.{processTopFunBusiness, processTopUsefulUser, processMostFaithfulUsersPerBusiness}
 
 object Consumer {
 
@@ -84,7 +84,8 @@ object Consumer {
         updateReviewTable(new_reviews)
 
         processTopFunBusiness(spark)
-        processTopUsefullUser(spark)
+        processTopUsefulUser(spark)
+        processMostFaithfulUsersPerBusiness(spark)
 
         println(s"✅ Batch $batchId traité et statistiques insérées.")
       }

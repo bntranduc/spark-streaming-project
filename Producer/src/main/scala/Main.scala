@@ -16,7 +16,7 @@ object Producer {
     val batchSize = 1000
 
     val spark = SparkSession.builder()
-      .appName("SplitLargeJSONToKafka")
+      .appName("Producer")
       .master("local[*]")
       .getOrCreate()
 
