@@ -38,6 +38,7 @@ object Consumer {
       Seq("user_id", "name", "fans", "elite", "friends", "yelping_since"),
       "orc"
     )
+    val userDF = usersDF.withColumn("yelping_since", to_timestamp(col("yelping_since"), "yyyy-MM-dd HH:mm:ss"))
 
     val businessDF = loadOrCreateArtefactSafe(
       spark,
@@ -48,7 +49,7 @@ object Consumer {
       "orc"
     )
 
-    consumeKafkaTopic(spark, businessDF, usersDF)
+    consumeKafkaTopic(spark, businessDF, userDF)
 
     spark.streams.awaitAnyTermination()
   }
@@ -86,11 +87,12 @@ object Consumer {
         val new_reviews = batchDF
           .join(df_review_db, Seq("review_id"), "left_anti").distinct()
 
-        // println("batchDF =", batchDF.count())
-        // println("new_reviews =", batchDF.count())
-        // println("review_db =", df_review_db.count())
+        println("batchDF =", batchDF.count())
+        println("new_reviews =", batchDF.count())
+        println("review_db =", df_review_db.count())
 
         // usersDF.show()
+        // usersDF.printSchema()
         // businessDF.show()
 
         updateUserTable(spark, new_reviews, usersDF)
@@ -107,7 +109,6 @@ object Consumer {
         processClosedBusinessRatingStats(spark)
         processActivityEvolution(spark)
         processEliteImpactOnRatings(spark)
-
         
         println(s"✅ Batch $batchId traité et statistiques insérées.")
       }

@@ -16,6 +16,8 @@ object UpdateDatabse {
           .load()
           .select("user_id")
 
+        df_users_db.printSchema()
+
         val new_users_ids = new_reviews.select("user_id")
             .join(df_users_db, Seq("user_id"), "left_anti").distinct()
 
