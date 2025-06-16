@@ -2,27 +2,43 @@ from streamlit_autorefresh import st_autorefresh
 from src.getDataFromDatabase import *
 import streamlit as st
 
-st_autorefresh(interval=2000, limit=100)
+st_autorefresh(interval=1000)
 
 
 st.title("📝 Dashboard Yelp")
+st.markdown("---")
 
 # ---------- VISUALISATIONS ----------
 
-# Interface Streamlit
-col1, col2, col3 = st.columns(3)
-#1 user nbr
-
-col1.write("Nombre d'utilisateur :")
+# Récupération des données
 all_user = query_db("SELECT COUNT(*) FROM user_table;")
-col1.write(all_user['count'][0])
-
-#2 review nbr
-col2.write("Nombre de review :")
 all_review = query_db("SELECT COUNT(*) FROM review_table;")
-col2.write(all_review['count'][0])
-
-#3 business nbr
-col3.write("Nombre d'entreprise :")
 all_query_business = query_db("SELECT COUNT(*) FROM business_table;")
-col3.write(all_query_business['count'][0])
+
+# Style des cards
+card_style = """
+    <div style="
+        background-color: #f9f9f9;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        text-align: center;
+    ">
+        <div style='font-size: 18px; color: #555;'>{label}</div>
+        <div style='font-size: 42px; font-weight: bold; color: #333;'>{value}</div>
+    </div>
+"""
+
+# Layout avec colonnes
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.markdown(card_style.format(label="Nombre d'utilisateur", value=all_user['count'][0]), unsafe_allow_html=True)
+
+with col2:
+    st.markdown(card_style.format(label="Nombre de review", value=all_review['count'][0]), unsafe_allow_html=True)
+
+with col3:
+    st.markdown(card_style.format(label="Nombre d'entreprise", value=all_query_business['count'][0]), unsafe_allow_html=True)
+
+
