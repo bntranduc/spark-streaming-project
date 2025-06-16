@@ -2,6 +2,7 @@ import org.apache.spark.sql.{SparkSession, DataFrame}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.Row
+import scala.util.{Try, Success, Failure}
 
 import Config._
 import DataSourceReader.loadOrCreateArtefactSafe
@@ -20,6 +21,12 @@ import StatsProcessor.{
 }
 
 object Consumer {
+  val dbOptions = Map(
+    "url" -> DB_URL,
+    "user" -> DB_USER,
+    "password" -> DB_PASSWORD,
+    "driver" -> DB_DRIVER
+  )
 
   def main(args: Array[String]): Unit = {
 
@@ -55,61 +62,90 @@ object Consumer {
   }
 
   def consumeKafkaTopic(spark: SparkSession, businessDF: DataFrame, usersDF: DataFrame): Unit = {
-    val kafkaStreamDF: DataFrame = spark.readStream
-      .format("kafka")
-      .option("kafka.bootstrap.servers", BOOTSTRAP_SERVER)
-      .option("subscribe", REVIEW_TOPIC)
-      .option("startingOffsets", "earliest")
-      .load()
 
-    val messages = kafkaStreamDF.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)")
+    val maybeKafkaDF = tryConnect(spark, attempt=1, retries=5, delaySeconds=5)
 
-    val parsedMessages = messages.select(
-      from_json(col("value"), REVIEW_SCHEMA).as("data")
-    ).select("data.*")
+    maybeKafkaDF match {
+      case Some(kafkaStreamDF) =>
+          val messages = kafkaStreamDF.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)")
+          
+          val parsedMessages = messages.select(
+            from_json(col("value"), REVIEW_SCHEMA).as("data")
+          ).select("data.*")
+          
+          parsedMessages.writeStream
+            .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
+              
+              val df_review_db = spark.read
+                .format("jdbc")
+                .options(dbOptions + ("dbtable" -> REVIEW_TABLE))
+                .load()
+                .select("review_id")
+              val new_reviews = batchDF
+                .join(df_review_db, Seq("review_id"), "left_anti").distinct()
+              
+              // println("batchDF =", batchDF.count())
+              // println("new_reviews =", batchDF.count())
+              // println("review_db =", df_review_db.count())
+              
+              updateReviewTable(new_reviews)
+              updateUserTable(spark, new_reviews, usersDF)
+              updateBusinessTable(spark, new_reviews, businessDF)
 
-    val dbOptions = Map(
-      "url" -> DB_URL,
-      "user" -> DB_USER,
-      "password" -> DB_PASSWORD,
-      "driver" -> DB_DRIVER
-    )
+              println("Total Review = ", getAllFromTable(spark, REVIEW_TABLE).count())        
+              println("Total Users = ", getAllFromTable(spark, USER_TABLE).count())        
+              println("Total Business = ", getAllFromTable(spark, BUSINESS_TABLE).count())        
 
-    parsedMessages.writeStream
-      .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
+              // processTopFunBusiness(spark)
+              // processTopUsefulUser(spark)
+              // processMostFaithfulUsersPerBusiness(spark)
+              // processTopRatedBusinessByCategory(spark)
+              // processTopPopularBusinessByMonth(spark)
+              // processTopPopularUsers(spark)
+              // processApexPredatorUsers(spark)
+              // processClosedBusinessRatingStats(spark)
+              // processActivityEvolution(spark)
+              // processEliteImpactOnRatings(spark)
+              println(s"✅ Batch $batchId traité et statistiques insérées.")
+            }
+            .outputMode("append")
+            .start()
+            .awaitTermination()
 
-        val df_review_db = spark.read
-          .format("jdbc")
-          .options(dbOptions + ("dbtable" -> REVIEW_TABLE))
-          .load()
-          .select("review_id")
-
-        val new_reviews = batchDF
-          .join(df_review_db, Seq("review_id"), "left_anti").distinct()
-
-        println("batchDF =", batchDF.count())
-        println("new_reviews =", batchDF.count())
-        println("review_db =", df_review_db.count())
-
-        updateReviewTable(new_reviews)
-        updateUserTable(spark, new_reviews, usersDF)
-        updateBusinessTable(spark, new_reviews, businessDF)
-
-        processTopFunBusiness(spark)
-        processTopUsefulUser(spark)
-        processMostFaithfulUsersPerBusiness(spark)
-        processTopRatedBusinessByCategory(spark)
-        processTopPopularBusinessByMonth(spark)
-        processTopPopularUsers(spark)
-        processApexPredatorUsers(spark)
-        processClosedBusinessRatingStats(spark)
-        processActivityEvolution(spark)
-        processEliteImpactOnRatings(spark)
-        
-        println(s"✅ Batch $batchId traité et statistiques insérées.")
-      }
-      .outputMode("append")
-      .start()
-      .awaitTermination()
+      case None =>
+        println("Le topic Kafka n’est pas disponible. Fermeture de l'application.")
+        System.exit(1)
+    }
   }
+  
+  def tryConnect(spark: SparkSession, attempt: Int, retries: Int, delaySeconds: Int): Option[DataFrame] = {
+      println(s"⏳ Tentative $attempt/$retries de connexion au topic Kafka...")
+      Try {
+        spark.readStream
+          .format("kafka")
+          .option("kafka.bootstrap.servers", BOOTSTRAP_SERVER)
+          .option("subscribe", REVIEW_TOPIC)
+          .option("startingOffsets", "earliest")
+          .load()
+      } match {
+        case Success(df) =>
+          println(s"✅ Connexion établie avec le topic Kafka '$REVIEW_TOPIC'")
+          Some(df)
+        case Failure(e) if attempt < retries =>
+          println(s"❌ Échec tentative $attempt : ${e.getMessage}")
+          Thread.sleep(delaySeconds * 1000)
+          tryConnect(spark, attempt + 1, retries, delaySeconds)
+        case Failure(e) =>
+          println(s"⛔ Échec après $retries tentatives. Abandon.")
+          None
+      }
+    }
+
+    def getAllFromTable(spark: SparkSession, table: String): DataFrame = {
+        return spark.read
+          .format("jdbc")
+          .options(dbOptions + ("dbtable" -> table))
+          .load()
+    }
+
 }

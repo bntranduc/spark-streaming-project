@@ -13,7 +13,7 @@ object Producer {
     val inputPath = REVIEW_JSON_PATH
     val kafkaBootstrap = BOOTSTRAP_SERVER
     val topicName = REVIEW_TOPIC
-    val batchSize = 1000
+    val batchSize = 100
 
     val spark = SparkSession.builder()
       .appName("Producer")

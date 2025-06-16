@@ -9,6 +9,17 @@ object UpdateDatabse {
       "driver" -> DB_DRIVER
     )
 
+    def updateReviewTable(new_reviews: DataFrame) {
+        new_reviews.write
+          .format("jdbc")
+          .options(dbOptions + ("dbtable" -> REVIEW_TABLE))
+          .mode("append")
+          .save()
+
+
+
+
+    }
     def updateUserTable(spark: SparkSession, new_reviews: DataFrame, usersDF: DataFrame) {
         val df_users_db = spark.read
           .format("jdbc")
@@ -51,13 +62,7 @@ object UpdateDatabse {
           .save()
     }
 
-    def updateReviewTable(new_reviews: DataFrame) {
-        new_reviews.write
-          .format("jdbc")
-          .options(dbOptions + ("dbtable" -> REVIEW_TABLE))
-          .mode("append")
-          .save()
-    }
+
 
     def updateTopFunBusinessTable(spark: SparkSession, topBusiness: DataFrame): Unit = {
       topBusiness.write
