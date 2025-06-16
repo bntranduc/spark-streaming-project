@@ -5,6 +5,7 @@
 .bloop/
 .metals/
 *.iml
+.venv
 
 # === Mac/Linux system files ===
 .DS_Store
