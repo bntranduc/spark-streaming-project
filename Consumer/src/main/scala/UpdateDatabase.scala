@@ -15,21 +15,22 @@ object UpdateDatabse {
           .options(dbOptions + ("dbtable" -> REVIEW_TABLE))
           .mode("append")
           .save()
-
-
-
-
     }
-    def updateUserTable(spark: SparkSession, new_reviews: DataFrame, usersDF: DataFrame) {
+
+    def updateUserTable(spark: SparkSession, usersDF: DataFrame) {
         val df_users_db = spark.read
           .format("jdbc")
           .options(dbOptions + ("dbtable" -> USER_TABLE))
           .load()
           .select("user_id")
 
-        df_users_db.printSchema()
+        val df_reviews_db = spark.read
+          .format("jdbc")
+          .options(dbOptions + ("dbtable" -> REVIEW_TABLE))
+          .load()
+          .select("user_id")
 
-        val new_users_ids = new_reviews.select("user_id")
+        val new_users_ids = df_reviews_db.select("user_id")
             .join(df_users_db, Seq("user_id"), "left_anti").distinct()
 
         val new_users = usersDF
@@ -40,16 +41,25 @@ object UpdateDatabse {
           .options(dbOptions + ("dbtable" -> USER_TABLE))
           .mode("append")
           .save()
+        
+        println("updateUserTable new_users =", new_users.count())
+
     }
 
-    def updateBusinessTable(spark: SparkSession, new_reviews: DataFrame, businessDF: DataFrame) {
+    def updateBusinessTable(spark: SparkSession, businessDF: DataFrame) {
         val df_business_db = spark.read
           .format("jdbc")
           .options(dbOptions + ("dbtable" -> BUSINESS_TABLE))
           .load()
           .select("business_id")
 
-        val new_business_ids = new_reviews.select("business_id")
+        val df_reviews_db = spark.read
+          .format("jdbc")
+          .options(dbOptions + ("dbtable" -> REVIEW_TABLE))
+          .load()
+          .select("business_id")
+
+        val new_business_ids = df_reviews_db.select("business_id")
             .join(df_business_db, Seq("business_id"), "left_anti").distinct()
 
         val new_business = businessDF
@@ -60,9 +70,9 @@ object UpdateDatabse {
           .options(dbOptions + ("dbtable" -> BUSINESS_TABLE))
           .mode("append")
           .save()
+        
+        println("updateBusinessTable new_business =", new_business.count())
     }
-
-
 
     def updateTopFunBusinessTable(spark: SparkSession, topBusiness: DataFrame): Unit = {
       topBusiness.write

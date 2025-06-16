@@ -81,20 +81,21 @@ object Consumer {
                 .options(dbOptions + ("dbtable" -> REVIEW_TABLE))
                 .load()
                 .select("review_id")
+
               val new_reviews = batchDF
                 .join(df_review_db, Seq("review_id"), "left_anti").distinct()
-              
-              // println("batchDF =", batchDF.count())
-              // println("new_reviews =", batchDF.count())
-              // println("review_db =", df_review_db.count())
-              
-              updateReviewTable(new_reviews)
-              updateUserTable(spark, new_reviews, usersDF)
-              updateBusinessTable(spark, new_reviews, businessDF)
 
-              println("Total Review = ", getAllFromTable(spark, REVIEW_TABLE).count())        
-              println("Total Users = ", getAllFromTable(spark, USER_TABLE).count())        
-              println("Total Business = ", getAllFromTable(spark, BUSINESS_TABLE).count())        
+              println("MAIN batchDF =", batchDF.count())
+              println("MAIN review_db =", df_review_db.count())
+              println("MAIN new_reviews =", new_reviews.count())
+
+              updateReviewTable(new_reviews)
+              updateUserTable(spark, usersDF)
+              updateBusinessTable(spark, businessDF)
+
+              println("MAIN Total Review = ", getAllFromTable(spark, REVIEW_TABLE).count())        
+              println("MAINT Total Users = ", getAllFromTable(spark, USER_TABLE).count())        
+              println("MAIN Total Business = ", getAllFromTable(spark, BUSINESS_TABLE).count())        
 
               // processTopFunBusiness(spark)
               // processTopUsefulUser(spark)

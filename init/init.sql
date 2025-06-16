@@ -26,7 +26,6 @@ CREATE TABLE user_table (
     yelping_since   TIMESTAMP
 );
 
-
 -- Table review
 DROP TABLE IF EXISTS review_table;
 CREATE TABLE review_table (
