@@ -17,7 +17,8 @@ import StatsProcessor.{
   processApexPredatorUsers,
   processClosedBusinessRatingStats,
   processActivityEvolution,
-  processEliteImpactOnRatings
+  processEliteImpactOnRatings,
+  processTopCategories
 }
 
 object Consumer {
@@ -97,6 +98,7 @@ object Consumer {
               println("MAINT Total Users = ", getAllFromTable(spark, USER_TABLE).count())        
               println("MAIN Total Business = ", getAllFromTable(spark, BUSINESS_TABLE).count())        
 
+              processTopCategories(spark)
               // processTopFunBusiness(spark)
               // processTopUsefulUser(spark)
               // processMostFaithfulUsersPerBusiness(spark)

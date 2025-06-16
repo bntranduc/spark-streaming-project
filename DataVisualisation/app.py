@@ -1,12 +1,12 @@
 from streamlit_autorefresh import st_autorefresh
 from src.getDataFromDatabase import *
 import streamlit as st
+import plotly.express as px
 
 st_autorefresh(interval=1000)
 
 
 st.title("📝 Dashboard Yelp")
-st.markdown("---")
 
 # ---------- VISUALISATIONS ----------
 
@@ -14,6 +14,7 @@ st.markdown("---")
 all_user = query_db("SELECT COUNT(*) FROM user_table;")
 all_review = query_db("SELECT COUNT(*) FROM review_table;")
 all_query_business = query_db("SELECT COUNT(*) FROM business_table;")
+top_categories = query_db("SELECT * FROM top_categories_table;")
 
 # Style des cards
 card_style = """
@@ -30,15 +31,18 @@ card_style = """
 """
 
 # Layout avec colonnes
+st.markdown("---")
+st.markdown("### 📌 Statistiques Générales")
 col1, col2, col3 = st.columns(3)
-
 with col1:
     st.markdown(card_style.format(label="Utilisateurs", value=all_user['count'][0]), unsafe_allow_html=True)
-
 with col2:
     st.markdown(card_style.format(label="Reviews", value=all_review['count'][0]), unsafe_allow_html=True)
-
 with col3:
     st.markdown(card_style.format(label="Entreprises", value=all_query_business['count'][0]), unsafe_allow_html=True)
 
 
+st.markdown("---")
+st.markdown("### 🥧 Analyse des catégories les plus fréquentes")
+fig = px.pie(top_categories, names='category', values='count')
+st.plotly_chart(fig)

@@ -13,7 +13,8 @@ import UpdateDatabse.{
     updateApexPredatorUserTable,
     updateClosedBusinessRatingStatsTable,
     updateActivityEvolutionTable,
-    updateEliteImpactTable
+    updateEliteImpactTable,
+    updateTopCategoriesTable
 }
 
 object StatsProcessor {
@@ -24,6 +25,29 @@ object StatsProcessor {
       "password" -> DB_PASSWORD,
       "driver" -> DB_DRIVER
     )
+
+
+    def processTopCategories(spark: SparkSession): Unit = {
+        val businessDF = spark.read
+            .format("jdbc")
+            .options(dbOptions + ("dbtable" -> BUSINESS_TABLE))
+            .load()
+            .select("categories")
+
+        val categoriesDF = businessDF
+            .withColumn("category", explode(split(col("categories"), ",\\s*")))
+            .filter(col("category").isNotNull)
+
+        val topCategories = categoriesDF
+            .groupBy("category")
+            .count()
+            .orderBy(desc("count"))
+            .limit(10)
+
+        updateTopCategoriesTable(topCategories)
+        topCategories.show()
+    }
+
 
     def processTopFunBusiness(spark: SparkSession): Unit = {
 
@@ -131,7 +155,7 @@ object StatsProcessor {
 
         val rankedDF = aggDF
             .withColumn("rank", rank().over(window))
-            .filter(col("rank") <= 3)
+            .filter(col("rank") <= 10)
 
         rankedDF.show()
 

@@ -69,4 +69,6 @@ object Config {
   val CLOSED_BUSINESS_RATING_STATS_TABLE: String = "closed_business_rating_stats_table"
   val ACTIVITY_EVOLUTION_TABLE: String = "activity_evolution_table"
   val ELITE_IMPACT_TABLE: String = "elite_impact_on_rating_table"
+
+  val TOP_CATEGORIES_TABLE: String = "top_categories_table"
 }

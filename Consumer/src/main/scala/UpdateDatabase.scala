@@ -9,6 +9,15 @@ object UpdateDatabse {
       "driver" -> DB_DRIVER
     )
 
+
+    def updateTopCategoriesTable(topCategories :DataFrame): Unit = {
+        topCategories.write
+        .format("jdbc")
+        .options(dbOptions + ("dbtable" -> TOP_CATEGORIES_TABLE))
+        .mode("overwrite")
+        .save()
+    }
+
     def updateReviewTable(new_reviews: DataFrame) {
         new_reviews.write
           .format("jdbc")
