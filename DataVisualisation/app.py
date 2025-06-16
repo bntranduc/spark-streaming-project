@@ -24,8 +24,8 @@ card_style = """
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         text-align: center;
     ">
-        <div style='font-size: 18px; color: #555;'>{label}</div>
-        <div style='font-size: 42px; font-weight: bold; color: #333;'>{value}</div>
+        <div style='font-size: 24px; font-weight: bold; color: #555;'>{label}</div>
+        <div style='font-size: 42px; font-weight: bold; color: #009933;'>{value}</div>
     </div>
 """
 
@@ -33,12 +33,12 @@ card_style = """
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.markdown(card_style.format(label="Nombre d'utilisateur", value=all_user['count'][0]), unsafe_allow_html=True)
+    st.markdown(card_style.format(label="Utilisateurs", value=all_user['count'][0]), unsafe_allow_html=True)
 
 with col2:
-    st.markdown(card_style.format(label="Nombre de review", value=all_review['count'][0]), unsafe_allow_html=True)
+    st.markdown(card_style.format(label="Reviews", value=all_review['count'][0]), unsafe_allow_html=True)
 
 with col3:
-    st.markdown(card_style.format(label="Nombre d'entreprise", value=all_query_business['count'][0]), unsafe_allow_html=True)
+    st.markdown(card_style.format(label="Entreprises", value=all_query_business['count'][0]), unsafe_allow_html=True)
 
 
