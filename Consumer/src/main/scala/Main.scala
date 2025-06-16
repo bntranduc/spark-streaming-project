@@ -91,13 +91,9 @@ object Consumer {
         println("new_reviews =", batchDF.count())
         println("review_db =", df_review_db.count())
 
-        // usersDF.show()
-        // usersDF.printSchema()
-        // businessDF.show()
-
+        updateReviewTable(new_reviews)
         updateUserTable(spark, new_reviews, usersDF)
         updateBusinessTable(spark, new_reviews, businessDF)
-        updateReviewTable(new_reviews)
 
         processTopFunBusiness(spark)
         processTopUsefulUser(spark)
