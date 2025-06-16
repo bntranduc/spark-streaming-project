@@ -53,7 +53,7 @@ object Config {
     StructField("friends", StringType, true),
     StructField("elite", StringType, true),
     StructField("fans", IntegerType, true),
-    StructField("yelping_since", StringType, true),
+    StructField("yelping_since", TimestampType, true),
     StructField("name", StringType, true)
   ))
   val USER_TABLE: String = "user_table"
