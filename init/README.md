@@ -11,7 +11,6 @@
 | `\?`          | Lister toutes les commandes internes `psql`        |
 | `\h`          | Aide sur une commande SQL (ex : `\h CREATE TABLE`) |
 
-
 # Connect
 sudo -u postgres psql
 

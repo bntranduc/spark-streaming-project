@@ -2,24 +2,27 @@ import org.apache.spark.sql.types._
 
 object Config {
   //Dataset path
-  val DATASET_PATH = sys.env.getOrElse("DATASET_PATH", "../yelp_dataset")
+  private val DATASET_PATH = sys.env.getOrElse("DATASET_PATH", "../yelp_dataset")
   val BUSINESS_JSON_PATH: String = DATASET_PATH + "/yelp_academic_dataset_business.json"
   val USER_JSON_PATH: String = DATASET_PATH + "/yelp_academic_dataset_user.json"
 
   // Kafka
-  val BOOTSTRAP_SERVER = sys.env.getOrElse("KAFKA_HOST", "localhost:9092")
+  val BOOTSTRAP_SERVER: String = sys.env.getOrElse("KAFKA_HOST", "localhost:9092")
 
   // Base de données
-  val DB_USER: String = sys.env.getOrElse("DATABASE_USER", "divinandretomadam")
-  val DB_PASSWORD: String = sys.env.getOrElse("DATABASE_PASSWORD", "oDAnmvidrTnmeiAa")
-  val DB_NAME: String = sys.env.getOrElse("DATABASE_NAME", "spark_streaming_db")
-  val DB_HOST: String = sys.env.getOrElse("DATABASE_HOST", "localhost")
-  val DB_PORT: String = sys.env.getOrElse("DATABASE_PORT", "5432")
-  val DB_URL: String = s"jdbc:postgresql://$DB_HOST:$DB_PORT/$DB_NAME"
-  val DB_DRIVER: String = "org.postgresql.Driver"
+  private val DB_NAME: String = sys.env.getOrElse("DATABASE_NAME", "spark_streaming_db")
+  private val DB_HOST: String = sys.env.getOrElse("DATABASE_HOST", "localhost")
+  private val DB_PORT: String = sys.env.getOrElse("DATABASE_PORT", "5432")
+  
+  val DB_CONFIG: Map[String, String] = Map(
+    "url" -> s"jdbc:postgresql://$DB_HOST:$DB_PORT/$DB_NAME",
+    "user" -> sys.env.getOrElse("DATABASE_USER", "divinandretomadam"),
+    "password" -> sys.env.getOrElse("DATABASE_PASSWORD", "oDAnmvidrTnmeiAa"),
+    "driver" -> "org.postgresql.Driver"
+  )
 
   // Business
-  val BUSINESS_ARTEFACT_PATH = DATASET_PATH + "/business.parquet"
+  val BUSINESS_ARTEFACT_PATH: String = DATASET_PATH + "/business.parquet"
   val BUSINESS_SCHEMA: StructType = StructType(List(
     StructField("business_id", StringType, true),
     StructField("name", StringType, true),
@@ -31,7 +34,7 @@ object Config {
   val BUSINESS_TABLE: String = "business_table"
 
   // Review
-  val REVIEW_TOPIC: String = "yelp-topic-review-1"
+  val REVIEW_TOPIC: String = "yelp-topic-review"
   val REVIEW_SCHEMA: StructType = StructType(List(
     StructField("review_id", StringType, true),
     StructField("user_id", StringType, true),

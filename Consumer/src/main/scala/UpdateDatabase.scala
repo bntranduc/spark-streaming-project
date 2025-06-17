@@ -2,40 +2,34 @@ import org.apache.spark.sql.{SparkSession, DataFrame}
 import Config._
 
 object UpdateDatabse {
-    val dbOptions = Map(
-      "url" -> DB_URL,
-      "user" -> DB_USER,
-      "password" -> DB_PASSWORD,
-      "driver" -> DB_DRIVER
-    )
 
-
-    def updateTopCategoriesTable(topCategories :DataFrame): Unit = {
-        topCategories.write
+    def updateReviewTable(spark: SparkSession, batchDF: DataFrame): Unit =  {
+      val df_review_db = spark.read
         .format("jdbc")
-        .options(dbOptions + ("dbtable" -> TOP_CATEGORIES_TABLE))
-        .mode("overwrite")
-        .save()
-    }
+        .options(DB_CONFIG + ("dbtable" -> REVIEW_TABLE))
+        .load()
+        .select("review_id")
 
-    def updateReviewTable(new_reviews: DataFrame) {
+        val new_reviews = batchDF
+          .join(df_review_db, Seq("review_id"), "left_anti").distinct()
+
         new_reviews.write
           .format("jdbc")
-          .options(dbOptions + ("dbtable" -> REVIEW_TABLE))
+          .options(DB_CONFIG + ("dbtable" -> REVIEW_TABLE))
           .mode("append")
           .save()
     }
 
-    def updateUserTable(spark: SparkSession, usersDF: DataFrame) {
+    def updateUserTable(spark: SparkSession, usersDF: DataFrame): Unit =  {
         val df_users_db = spark.read
           .format("jdbc")
-          .options(dbOptions + ("dbtable" -> USER_TABLE))
+          .options(DB_CONFIG + ("dbtable" -> USER_TABLE))
           .load()
           .select("user_id")
 
         val df_reviews_db = spark.read
           .format("jdbc")
-          .options(dbOptions + ("dbtable" -> REVIEW_TABLE))
+          .options(DB_CONFIG + ("dbtable" -> REVIEW_TABLE))
           .load()
           .select("user_id")
 
@@ -47,7 +41,7 @@ object UpdateDatabse {
 
         new_users.write
           .format("jdbc")
-          .options(dbOptions + ("dbtable" -> USER_TABLE))
+          .options(DB_CONFIG + ("dbtable" -> USER_TABLE))
           .mode("append")
           .save()
         
@@ -55,16 +49,16 @@ object UpdateDatabse {
 
     }
 
-    def updateBusinessTable(spark: SparkSession, businessDF: DataFrame) {
+    def updateBusinessTable(spark: SparkSession, businessDF: DataFrame): Unit =  {
         val df_business_db = spark.read
           .format("jdbc")
-          .options(dbOptions + ("dbtable" -> BUSINESS_TABLE))
+          .options(DB_CONFIG + ("dbtable" -> BUSINESS_TABLE))
           .load()
           .select("business_id")
 
         val df_reviews_db = spark.read
           .format("jdbc")
-          .options(dbOptions + ("dbtable" -> REVIEW_TABLE))
+          .options(DB_CONFIG + ("dbtable" -> REVIEW_TABLE))
           .load()
           .select("business_id")
 
@@ -76,95 +70,19 @@ object UpdateDatabse {
 
         new_business.write
           .format("jdbc")
-          .options(dbOptions + ("dbtable" -> BUSINESS_TABLE))
+          .options(DB_CONFIG + ("dbtable" -> BUSINESS_TABLE))
           .mode("append")
           .save()
         
         println("updateBusinessTable new_business =", new_business.count())
     }
 
-    def updateTopFunBusinessTable(spark: SparkSession, topBusiness: DataFrame): Unit = {
-      topBusiness.write
+    def updateTopCategoriesTable(topCategories :DataFrame): Unit = {
+        topCategories.write
         .format("jdbc")
-        .options(dbOptions + ("dbtable" -> TOP_FUN_BUSINESS_TABLE))
+        .options(DB_CONFIG + ("dbtable" -> TOP_CATEGORIES_TABLE))
         .mode("overwrite")
         .save()
-    }
-
-    def updateTopUsefullUserTable(spark: SparkSession, topUsers: DataFrame): Unit = {
-      topUsers.write
-        .format("jdbc")
-        .options(dbOptions + ("dbtable" -> TOP_USEFULL_USER_TABLE))
-        .mode("overwrite")
-        .save()
-    }
-
-    def updateMostFaithfulUsersTable(spark: SparkSession, mostFaithfulUser: DataFrame) {
-      mostFaithfulUser.write
-        .format("jdbc")
-        .options(dbOptions + ("dbtable" -> TOP_FAITHFUL_USER_TABLE))
-        .mode("overwrite")
-        .save()
-    }
-    
-    def updateTopRatedByCategoryTable(spark: SparkSession, topRatedDF: DataFrame): Unit = {
-        topRatedDF.write
-            .format("jdbc")
-            .options(dbOptions + ("dbtable" -> TOP_RATED_BY_CATEGORY_TABLE))
-            .mode("overwrite")
-            .save()
-    }
-    
-    def updateTopPopularBusinessByMonth(spark: SparkSession, rankedDF: DataFrame): Unit = {
-        rankedDF.write
-            .format("jdbc")
-            .options(dbOptions + ("dbtable" -> TOP_POPULAR_BUSINESS_MONTHLY_TABLE))
-            .mode("overwrite")
-            .save()
-    }
-    
-    def updateTopPopularUserTable(spark: SparkSession, topUsers: DataFrame): Unit = {
-        topUsers
-            .select("user_id", "name", "fans", "friends_count", "rank")
-            .withColumnRenamed("friends_count", "friends")
-            .write
-            .format("jdbc")
-            .options(dbOptions + ("dbtable" -> TOP_POPULAR_USER_TABLE))
-            .mode("overwrite")
-            .save()
-    }
-    def updateApexPredatorUserTable(spark: SparkSession, apexUsers: DataFrame): Unit = {
-        apexUsers
-          .select("user_id", "name", "elite_years")
-          .write
-          .format("jdbc")
-          .options(dbOptions + ("dbtable" -> APEX_PREDATOR_USER_TABLE))
-          .mode("overwrite")
-          .save()
-    }
-    
-    def updateClosedBusinessRatingStatsTable(spark: SparkSession, result: DataFrame): Unit = {
-        result.write
-            .format("jdbc")
-            .options(dbOptions + ("dbtable" -> CLOSED_BUSINESS_RATING_STATS_TABLE))
-            .mode("overwrite")
-            .save()
-    }
-    
-    def updateActivityEvolutionTable(spark: SparkSession, result: DataFrame): Unit = {
-        result.write
-            .format("jdbc")
-            .options(dbOptions + ("dbtable" -> ACTIVITY_EVOLUTION_TABLE))
-            .mode("overwrite")
-            .save()
-    }
-    
-    def updateEliteImpactTable(spark: SparkSession, result: DataFrame): Unit = {
-        result.write
-            .format("jdbc")
-            .options(dbOptions + ("dbtable" -> ELITE_IMPACT_TABLE))
-            .mode("overwrite")
-            .save()
     }
 
 }

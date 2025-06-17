@@ -146,11 +146,8 @@ CREATE TABLE elite_impact_on_rating_table (
     review_count     INTEGER
 );
 
-
-
-
 DROP TABLE IF EXISTS top_categories_table;
 CREATE TABLE top_categories_table (
-    name    VARCHAR(16),
+    category    VARCHAR(16),
     count     INTEGER
 );
