@@ -54,7 +54,6 @@ else:
     fig = px.pie(top_categories, names='category', values='count')
     st.plotly_chart(fig)
 
-
 ################################################
 st.markdown("---")
 st.markdown("### 🔍 Classement des entreprises selon les avis clients")
