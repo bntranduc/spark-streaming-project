@@ -2,7 +2,7 @@ import org.apache.spark.sql.types._
 
 object Config {
 
-  val BATCH_SIZE = 500
+  val BATCH_SIZE = 2500
   val BOOTSTRAP_SERVER = sys.env.getOrElse("KAFKA_HOST", "localhost:9092")
 
   val REVIEW_TOPIC: String = "yelp-topic-review"

@@ -4,7 +4,10 @@ import scala.util.{Failure, Success, Try}
 import Config._
 import DataSourceReader.loadOrCreateArtefactSafe
 import UpdateDatabase.{updateBusinessTable, updateReviewTable, updateUserTable}
-import StatsProcessor.processTopCategories
+import StatsProcessor.{
+  processReviewEvolution,
+  processTopCategories
+}
 import scala.annotation.tailrec
 
 object Consumer {
@@ -81,6 +84,7 @@ object Consumer {
               updateUserTable(spark, usersDF)
               updateBusinessTable(spark, businessDF)
 
+              processReviewEvolution(spark)
               processTopCategories(spark)
               println(s"✅ Batch $batchId traité et statistiques insérées.")
             }
