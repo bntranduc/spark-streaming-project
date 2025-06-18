@@ -27,6 +27,7 @@ object Config {
     StructField("business_id", StringType, true),
     StructField("name", StringType, true),
     StructField("city", StringType, true),
+    StructField("address", StringType, true),
     StructField("state", StringType, true),
     StructField("is_open", IntegerType, true),
     StructField("categories", StringType, true),

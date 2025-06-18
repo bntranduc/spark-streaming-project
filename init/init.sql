@@ -10,6 +10,12 @@ CREATE TABLE business_table (
     business_id     TEXT PRIMARY KEY,
     name            VARCHAR(255),
     city            VARCHAR(100),
+    address         VARCHAR(100),
+    useful_count    INTEGER,
+    avg_useful      DOUBLE PRECISION,
+    funny_count     INTEGER,
+    avg_funny       DOUBLE PRECISION,
+    avg_stars   DOUBLE PRECISION,
     state           VARCHAR(50),
     categories      TEXT,
     is_open         INTEGER

@@ -2,8 +2,11 @@ from streamlit_autorefresh import st_autorefresh
 from src.getDataFromDatabase import *
 import streamlit as st
 import plotly.express as px
-import time
+import re
+from wordcloud import STOPWORDS, WordCloud
+import wordcloud
 import numpy as np
+import matplotlib.pyplot as plt
 # st_autorefresh(interval=1000)
 
 st.title("📝 Dashboard Yelp")
@@ -42,22 +45,110 @@ with st.spinner("chargement de données ..."):
 ################################################
 with st.spinner("chargement de données ..."):
     top_categories = query_db("SELECT * FROM top_categories_table;")
-    if (len(top_categories) > 0):
-        st.markdown("---")
-        st.markdown("### 🥧 Analyse des catégories les plus fréquentes")
-        fig = px.pie(top_categories, names='category', values='count')
-        st.plotly_chart(fig)
 
-#################################################
+st.markdown("---")
+st.markdown("### 🥧 Analyse des catégories les plus fréquentes")
+if top_categories.empty:
+    st.warning("Aucune donnée disponible dans la table `top_categories_table`.")
+else:
+    fig = px.pie(top_categories, names='category', values='count')
+    st.plotly_chart(fig)
+
+
+################################################
+st.markdown("---")
+st.markdown("### 🔍 Classement des entreprises selon les avis clients")
+
 with st.spinner("Chargement des données..."):
-    all_business = query_db("SELECT name, business_id FROM business_table;")
-    if (len(all_business) > 0):
-        st.markdown("---")
-        st.markdown("### 🏢 Infos sur les entreprises")
-        business_options = {row['name']: row['business_id'] for _, row in all_business.iterrows()}
-        selected_name = st.selectbox("Sélectionner une entreprise...", list(business_options.keys()))
-        selected_business_id = business_options[selected_name]
-        business = query_db(f"SELECT * FROM business_table WHERE business_id = '{selected_business_id}'")
-        st.write(business)
-        all_business_review = query_db(f"SELECT * FROM review_table WHERE business_id = '{selected_business_id}'")
-        st.write(all_business_review)
+    # top_rated_business = query_db("SELECT name, average_stars FROM business_table ORDER BY average_stars DESC LIMIT 10")
+    total_review_business = query_db("SELECT name, total_reviews FROM business_table ORDER BY total_reviews DESC LIMIT 10")
+    top_fun_business = query_db("SELECT name, funny_count FROM business_table ORDER BY funny_count DESC LIMIT 10")
+    top_useful_business = query_db("SELECT name, useful_count FROM business_table ORDER BY useful_count DESC LIMIT 10")
+
+if total_review_business.empty or top_fun_business.empty or top_useful_business.empty:
+    st.warning("Aucune donnée disponible dans la table `business_table`.")
+else:
+    col1, col2, col3 = st.columns(3)
+
+    def colorize(df, column, cmap="Blues"):
+        styled = df.style.background_gradient(subset=[column], cmap=cmap)
+        return styled
+
+    with col1:
+        st.markdown("#### 🏆 Top 10 - Les plus notes")
+        df1 = total_review_business.rename(columns={"total_reviews": "Nombres de Note", "name": "Entreprise"})
+        df1 = df1[["Nombres de Note", "Entreprise"]]
+        st.dataframe(colorize(df1, "Nombres de Note", "Greens"))
+
+    with col2:
+        st.markdown("#### 😂 Top 10 - Les plus drôles")
+        df2 = top_fun_business.rename(columns={"funny_count": "Votes Funny", "name": "Entreprise"})
+        df2 = df2[["Votes Funny", "Entreprise"]]
+        st.dataframe(colorize(df2, "Votes Funny", "Oranges"))
+
+    with col3:
+        st.markdown("#### 👍 Top 10 - Les plus utiles")
+        df3 = top_useful_business.rename(columns={"useful_count": "Votes Useful", "name": "Entreprise"})
+        df3 = df3[["Votes Useful", "Entreprise"]]
+        st.dataframe(colorize(df3, "Votes Useful", "Purples"))
+
+st.markdown("---")
+st.markdown("### 🏢 Infos sur les entreprises")
+with st.spinner("Chargement des données..."):
+    business_df = query_db("SELECT * FROM business_table ORDER BY avg_stars DESC")
+
+if business_df.empty:
+    st.warning("Aucune donnée disponible dans la table `business_table`.")
+else:
+    # Création des options pour le selectbox
+    business_options = {row['name']: row for _, row in business_df.iterrows()}
+    selected_name = st.selectbox("Sélectionner une entreprise...", list(business_options))
+    selected_business = business_options[selected_name]
+
+    # Affichage de l’entreprise sélectionnée
+    st.markdown("#### 🧾 Détails de l'entreprise sélectionnée")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown(f"**Nom :** {selected_business['name']}")
+        st.markdown(f"**Ville :** {selected_business['city']}")
+        st.markdown(f"**Adresse :** {selected_business['address']}")
+    with col2:
+        st.markdown(f"**Note moyenne :** ⭐ {selected_business['avg_stars']:.1f}")
+        st.markdown(f"**Utilité :** 👍 {selected_business['useful_count']}")
+        st.markdown(f"**Humour :** 😂 {selected_business['funny_count']}")
+    categories = selected_business.get("categories", "")
+    if categories:
+        st.markdown("**Catégories :**")
+        cat_list = [cat.strip() for cat in categories.split(",") if cat.strip()]
+        # Affichage stylisé avec des spans en ligne
+        cat_html = "".join([
+            f"<span style='display:inline-block; background-color:#eee; color:#333; padding:4px 10px; \
+            margin:4px 4px 4px 0; border-radius:20px; font-size:0.85rem;'>{cat}</span>"
+            for cat in cat_list
+        ])
+    
+        st.markdown(cat_html, unsafe_allow_html=True)
+
+    # Requête des avis
+    review_df = query_db(f"SELECT text FROM review_table WHERE business_id = '{selected_business['business_id']}'")
+
+    if review_df.empty:
+        st.info("Aucun avis disponible pour cette entreprise.")
+    else:
+        all_text = " ".join(review_df['text'].dropna().tolist()).lower()
+        all_text = re.sub(r"[^a-zA-Z\s]", "", all_text)
+
+        wordcloud = WordCloud(
+            width=800, height=400,
+            background_color='white',
+            stopwords=STOPWORDS,
+            max_words=100,
+            max_font_size=90,
+            random_state=42
+        ).generate(all_text)
+
+        st.markdown(f"### Nuage de mots pour **{selected_business['name']}**")
+        fig, ax = plt.subplots(figsize=(10, 5))
+        ax.imshow(wordcloud, interpolation='bilinear')
+        ax.axis('off')
+        st.pyplot(fig)

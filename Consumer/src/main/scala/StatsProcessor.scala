@@ -3,9 +3,7 @@ import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions._
 import Config._
 
-import UpdateDatabse.{
-    updateTopCategoriesTable
-}
+import UpdateDatabase.updateTopCategoriesTable
 
 object StatsProcessor {
 
@@ -27,7 +25,5 @@ object StatsProcessor {
             .limit(10)
 
         updateTopCategoriesTable(topCategories)
-        // topCategories.show()
     }
-
 }

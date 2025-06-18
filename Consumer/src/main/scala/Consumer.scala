@@ -3,7 +3,7 @@ import org.apache.spark.sql.functions._
 import scala.util.{Failure, Success, Try}
 import Config._
 import DataSourceReader.loadOrCreateArtefactSafe
-import UpdateDatabse.{updateBusinessTable, updateReviewTable, updateUserTable}
+import UpdateDatabase.{updateBusinessTable, updateReviewTable, updateUserTable}
 import StatsProcessor.processTopCategories
 import scala.annotation.tailrec
 
@@ -35,7 +35,7 @@ object Consumer {
         BUSINESS_JSON_PATH,
         BUSINESS_ARTEFACT_PATH,
         BUSINESS_SCHEMA,
-        Seq("business_id", "name", "city", "state", "categories", "is_Open"),
+        Seq("business_id", "name", "city", "address" ,"state", "categories", "is_Open"),
       )
       consumeKafkaTopic(spark, businessDF, userDF)
     } catch {

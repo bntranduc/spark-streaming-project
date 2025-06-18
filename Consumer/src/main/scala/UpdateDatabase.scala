@@ -1,7 +1,8 @@
-import org.apache.spark.sql.{SparkSession, DataFrame}
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import Config._
+import org.apache.spark.sql.functions.{avg, col, count, desc, lit, sum}
 
-object UpdateDatabse {
+object UpdateDatabase {
 
     def updateReviewTable(spark: SparkSession, batchDF: DataFrame): Unit =  {
       val df_review_db = spark.read
@@ -44,37 +45,39 @@ object UpdateDatabse {
           .options(DB_CONFIG + ("dbtable" -> USER_TABLE))
           .mode("append")
           .save()
-        
-        println("updateUserTable new_users =", new_users.count())
-
     }
 
     def updateBusinessTable(spark: SparkSession, businessDF: DataFrame): Unit =  {
-        val df_business_db = spark.read
-          .format("jdbc")
-          .options(DB_CONFIG + ("dbtable" -> BUSINESS_TABLE))
-          .load()
-          .select("business_id")
-
-        val df_reviews_db = spark.read
+        // 1. Charger les reviews
+        val reviews = spark.read
           .format("jdbc")
           .options(DB_CONFIG + ("dbtable" -> REVIEW_TABLE))
           .load()
-          .select("business_id")
+          .select("business_id", "stars", "useful", "funny", "cool")  // Ajoute "cool" si tu veux l’agréger
 
-        val new_business_ids = df_reviews_db.select("business_id")
-            .join(df_business_db, Seq("business_id"), "left_anti").distinct()
+        // 2. Calcul des métriques par business
+        val reviewStats = reviews
+          .groupBy("business_id")
+          .agg(
+              count("*").alias("total_reviews"),
+              sum("useful").alias("useful_count"),
+              avg("useful").alias("avg_useful"),
+              sum("funny").alias("funny_count"),
+              avg("funny").alias("avg_funny"),
+              avg("stars").alias("avg_stars")
+          )
+          .orderBy(desc("total_reviews"))
 
-        val new_business = businessDF
-          .join(new_business_ids, Seq("business_id"), "inner")
+        // 4. Join entre business et statistiques reviews
+        val enrichedBusiness = businessDF
+          .join(reviewStats, Seq("business_id"), "inner")
 
-        new_business.write
+        // 5. Sauvegarde dans la base
+        enrichedBusiness.write
           .format("jdbc")
           .options(DB_CONFIG + ("dbtable" -> BUSINESS_TABLE))
-          .mode("append")
+          .mode("overwrite")
           .save()
-        
-        println("updateBusinessTable new_business =", new_business.count())
     }
 
     def updateTopCategoriesTable(topCategories :DataFrame): Unit = {
