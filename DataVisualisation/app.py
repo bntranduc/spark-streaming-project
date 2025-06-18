@@ -7,11 +7,8 @@ from wordcloud import STOPWORDS, WordCloud
 import wordcloud
 import numpy as np
 import matplotlib.pyplot as plt
-# st_autorefresh(interval=1000)
 
-st.title("📝 Dashboard Yelp")
-
-# ---------- VISUALISATIONS ----------
+st_autorefresh(interval=1000)
 
 # Style des cards
 card_style = """
@@ -27,9 +24,15 @@ card_style = """
     </div>
 """
 
-################################################
+#########################   VISUALISATIONS   #######################
+st.title("📝 Dashboard Yelp")
+
+# -----------------------   Stats générales   ----------------------
 st.markdown("---")
 st.markdown("### 📌 Statistiques Générales")
+
+review_evolution = query_db("SELECT * FROM review_evolution_table;")
+
 with st.spinner("chargement de données ..."):
     all_user = query_db("SELECT COUNT(*) FROM user_table;")
     all_review = query_db("SELECT COUNT(*) FROM review_table;")
@@ -42,7 +45,53 @@ with st.spinner("chargement de données ..."):
     with col3:
         st.markdown(card_style.format(label="Entreprises", value=all_query_business['count'][0]), unsafe_allow_html=True)
 
-################################################
+# ----------------------- Review Evolution dans le temps ----------------------
+st.markdown("---")
+st.markdown("### 📈 Nombre de reviews journaliers")
+st.markdown("Cette courbe montre l'évolution quotidienne du volume de reviews enregistrées.")
+
+review_evolution["parsed_date"] = pd.to_datetime(review_evolution["parsed_date"])
+
+fig = px.line(
+    review_evolution,
+    x="parsed_date",
+    y="total_reviews",
+    labels={"parsed_date": "Date", "total_reviews": "Nombre de reviews"},
+    title="Évolution des reviews dans le temps"
+)
+
+fig.update_layout(
+    xaxis_title="Date",
+    yaxis_title="Nombre de reviews",
+    template="plotly_white",
+    hovermode="x unified"
+)
+
+st.plotly_chart(fig, use_container_width=True)
+
+review_evolution["cumulative_reviews"] = review_evolution["total_reviews"].cumsum()
+
+st.markdown("### 📊 Nombre total de reviews cumulées")
+st.markdown("Ce graphique montre la croissance cumulative du nombre de reviews au fil du temps.")
+
+fig_cum = px.line(
+    review_evolution,
+    x="parsed_date",
+    y="cumulative_reviews",
+    labels={"parsed_date": "Date", "cumulative_reviews": "Total cumulatif de reviews"},
+    title="Croissance cumulative des reviews"
+)
+
+fig_cum.update_layout(
+    xaxis_title="Date",
+    yaxis_title="Total cumulatif de reviews",
+    template="plotly_white",
+    hovermode="x unified"
+)
+
+st.plotly_chart(fig_cum, use_container_width=True)
+
+# ----------------------- Catégories les plus fréquentes ----------------------
 with st.spinner("chargement de données ..."):
     top_categories = query_db("SELECT * FROM top_categories_table;")
 
@@ -54,7 +103,7 @@ else:
     fig = px.pie(top_categories, names='category', values='count')
     st.plotly_chart(fig)
 
-################################################
+# ----------------------- Classement des entreprises ----------------------
 st.markdown("---")
 st.markdown("### 🔍 Classement des entreprises selon les avis clients")
 

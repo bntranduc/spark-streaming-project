@@ -62,7 +62,8 @@ object Config {
   ))
   val USER_TABLE: String = "user_table"
 
-  // top Business
+  // Transformations
+  val REVIEW_EVOLUTION_TABLE: String = "review_evolution_table"
   val TOP_FUN_BUSINESS_TABLE: String = "top_fun_business_table"
   val TOP_USEFULL_USER_TABLE: String = "top_usefull_user_table"
   val TOP_FAITHFUL_USER_TABLE: String = "top_faithful_user_table"

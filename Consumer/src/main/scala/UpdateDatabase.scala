@@ -80,6 +80,14 @@ object UpdateDatabase {
           .save()
     }
 
+    def updateReviewEvolutionTable(spark: SparkSession, review_by_date: DataFrame): Unit = {
+        review_by_date.write
+        .format("jdbc")
+        .options(DB_CONFIG + ("dbtable" -> REVIEW_EVOLUTION_TABLE))
+        .mode("overwrite")
+        .save()
+    }
+
     def updateTopCategoriesTable(topCategories :DataFrame): Unit = {
         topCategories.write
         .format("jdbc")
