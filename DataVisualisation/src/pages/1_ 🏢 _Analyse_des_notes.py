@@ -18,7 +18,7 @@ st.markdown("## Axes d’analyse :")
 st.markdown("### 1 - Distribution des notes")
 with st.spinner("Chargement de la distribution des notes..."):
     try:
-        distribution = query_db("SELECT * FROM note_distribution_table WHERE stars < 4;")
+        distribution = query_db("SELECT * FROM review_distribution_table WHERE stars < 4;")
     except Exception as e:
         st.error("Impossible de charger les données depuis la base.")
         st.exception(e)

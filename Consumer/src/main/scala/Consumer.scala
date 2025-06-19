@@ -90,7 +90,6 @@ object Consumer {
               processTopCategoriesPerRating(spark)
               saveNoteStarsDistribution(spark)
               println(s"Batch $batchId traité et statistiques insérées.")
-
             }
             .outputMode("append")
             .start()

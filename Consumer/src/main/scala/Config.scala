@@ -78,6 +78,6 @@ object Config {
   val ELITE_IMPACT_TABLE: String = "elite_impact_on_rating_table"
 
   val REVIEW_DISTRIBUTION_BY_USEFUL_TABLE = "review_distribution_useful"
-  val NOTE_DISTRIBUTION_TABLE: String = "review_distribution_table"
+  val REVIEW_DISTRIBUTION_TABLE: String = "review_distribution_table"
   val TOP_CATEGORIES_TABLE: String = "top_categories_table"
 }

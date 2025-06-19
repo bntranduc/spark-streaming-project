@@ -136,7 +136,7 @@ object StatsProcessor {
 
         noteDistribution.write
           .format("jdbc")
-          .options(DB_CONFIG + ("dbtable" -> NOTE_DISTRIBUTION_TABLE))
+          .options(DB_CONFIG + ("dbtable" -> REVIEW_DISTRIBUTION_TABLE))
           .mode("overwrite")
           .save()
     }
