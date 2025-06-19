@@ -1,4 +1,4 @@
-import org.apache.spark.sql.types._
+import org.apache.spark.sql.types.{StructField, _}
 
 object Config {
   //Dataset path
@@ -75,5 +75,6 @@ object Config {
   val ACTIVITY_EVOLUTION_TABLE: String = "activity_evolution_table"
   val ELITE_IMPACT_TABLE: String = "elite_impact_on_rating_table"
 
+  val NOTE_DISTRIBUTION_TABLE: String = "note_distribution_table"
   val TOP_CATEGORIES_TABLE: String = "top_categories_table"
 }

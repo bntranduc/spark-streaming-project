@@ -28,6 +28,7 @@ CREATE TABLE user_table (
     name            VARCHAR(255),
     fans            INTEGER,
     friends         TEXT,
+    avg_stars       DOUBLE PRECISION,
     elite           TEXT,
     yelping_since   TIMESTAMP
 );

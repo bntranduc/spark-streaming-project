@@ -26,6 +26,29 @@ object StatsProcessor {
         updateReviewEvolutionTable(spark, review_by_date)
     }
 
+    def saveNoteStarsDistribution(spark: SparkSession): Unit = {
+        // Lecture de la table des reviews
+        val dfReviews = spark.read
+          .format("jdbc")
+          .options(DB_CONFIG + ("dbtable" -> REVIEW_TABLE))
+          .load()
+          .select("stars")
+
+        // Agrégation : compter le nombre d'avis par note
+        val noteDistribution = dfReviews
+          .groupBy("stars")
+          .count()
+          .withColumnRenamed("count", "nb_notes") // renommage pour plus de clarté
+          .orderBy("stars")
+
+        // Sauvegarde dans une table JDBC
+        noteDistribution.write
+          .format("jdbc")
+          .options(DB_CONFIG + ("dbtable" -> NOTE_DISTRIBUTION_TABLE))
+          .mode("overwrite")
+          .save()
+    }
+
     def processTopCategories(spark: SparkSession): Unit = {
         val businessDF = spark.read
             .format("jdbc")

@@ -21,33 +21,40 @@ object UpdateDatabase {
           .save()
     }
 
-    def updateUserTable(spark: SparkSession, usersDF: DataFrame): Unit =  {
-        val df_users_db = spark.read
-          .format("jdbc")
-          .options(DB_CONFIG + ("dbtable" -> USER_TABLE))
-          .load()
-          .select("user_id")
+  def updateUserTable(spark: SparkSession, allUsersDF: DataFrame): Unit = {
+    // Lire les reviews (pour extraire uniquement les users ayant laissé un avis)
+    val df_reviews_db = spark.read
+      .format("jdbc")
+      .options(DB_CONFIG + ("dbtable" -> REVIEW_TABLE))
+      .load()
+      .select("user_id", "stars", "useful", "funny", "cool")
 
-        val df_reviews_db = spark.read
-          .format("jdbc")
-          .options(DB_CONFIG + ("dbtable" -> REVIEW_TABLE))
-          .load()
-          .select("user_id")
+    // Garder uniquement les users présents dans review_table
+    val filteredUsers = allUsersDF
+      .join(df_reviews_db, Seq("user_id"), "inner")
 
-        val new_users_ids = df_reviews_db.select("user_id")
-            .join(df_users_db, Seq("user_id"), "left_anti").distinct()
+    // Calculer les statistiques utilisateur
+    val userStats = filteredUsers
+      .groupBy("user_id")
+      .agg(
+        count("*").alias("total_reviews"),
+        sum("useful").alias("useful_count"),
+        avg("useful").alias("avg_useful"),
+        sum("funny").alias("funny_count"),
+        avg("funny").alias("avg_funny"),
+        avg("stars").alias("avg_stars")
+      )
+      .orderBy(desc("total_reviews"))
 
-        val new_users = usersDF
-          .join(new_users_ids, Seq("user_id"), "inner")
+    // Sauvegarder dans une table dédiée
+    userStats.write
+      .format("jdbc")
+      .options(DB_CONFIG + ("dbtable" -> USER_TABLE))
+      .mode("overwrite")
+      .save()
+  }
 
-        new_users.write
-          .format("jdbc")
-          .options(DB_CONFIG + ("dbtable" -> USER_TABLE))
-          .mode("append")
-          .save()
-    }
-
-    def updateBusinessTable(spark: SparkSession, businessDF: DataFrame): Unit =  {
+  def updateBusinessTable(spark: SparkSession, businessDF: DataFrame): Unit =  {
         // 1. Charger les reviews
         val reviews = spark.read
           .format("jdbc")

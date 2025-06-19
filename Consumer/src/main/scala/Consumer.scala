@@ -1,19 +1,17 @@
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions._
+
 import scala.util.{Failure, Success, Try}
 import Config._
 import DataSourceReader.loadOrCreateArtefactSafe
 import UpdateDatabase.{updateBusinessTable, updateReviewTable, updateUserTable}
-import StatsProcessor.{
-  processReviewEvolution,
-  processTopCategories
-}
+import StatsProcessor.{processReviewEvolution, processTopCategories, saveNoteStarsDistribution}
+
 import scala.annotation.tailrec
 
 object Consumer {
 
   def main(args: Array[String]): Unit = {
-
     val spark = SparkSession.builder()
       .appName("Consumer")
       .master("local[*]")
@@ -79,14 +77,15 @@ object Consumer {
           
           parsedMessages.writeStream
             .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
-                
+
               updateReviewTable(spark, batchDF)
               updateUserTable(spark, usersDF)
               updateBusinessTable(spark, businessDF)
 
+              saveNoteStarsDistribution(spark)
               processReviewEvolution(spark)
               processTopCategories(spark)
-              println(s"✅ Batch $batchId traité et statistiques insérées.")
+              println(s"Batch $batchId traité et statistiques insérées.")
             }
             .outputMode("append")
             .start()
@@ -100,7 +99,7 @@ object Consumer {
   
   @tailrec
   private def tryConnect(spark: SparkSession, attempt: Int, retries: Int, delaySeconds: Int): Option[DataFrame] = {
-      println(s"⏳ Tentative $attempt/$retries de connexion au topic Kafka...")
+      println(s"Tentative $attempt/$retries de connexion au topic Kafka...")
       Try {
         spark.readStream
           .format("kafka")
@@ -110,14 +109,14 @@ object Consumer {
           .load()
       } match {
         case Success(df) =>
-          println(s"✅ Connexion établie avec le topic Kafka '$REVIEW_TOPIC'")
+          println(s"Connexion établie avec le topic Kafka '$REVIEW_TOPIC'")
           Some(df)
         case Failure(e) if attempt < retries =>
-          println(s"❌ Échec tentative $attempt : ${e.getMessage}")
+          println(s"Échec tentative $attempt : ${e.getMessage}")
           Thread.sleep(delaySeconds * 1000)
           tryConnect(spark, attempt + 1, retries, delaySeconds)
         case Failure(e) =>
-          println(s"⛔ Échec après $retries tentatives. Abandon.")
+          println(s"Échec après $retries tentatives. Abandon.")
           None
       }
   }
