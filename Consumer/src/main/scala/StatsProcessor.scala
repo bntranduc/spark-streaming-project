@@ -32,7 +32,6 @@ object StatsProcessor {
       .save()
   }
 
-
   def processBusinessLocationState(sparkSession: SparkSession): Unit = {
 
     val businessDF = sparkSession.read
