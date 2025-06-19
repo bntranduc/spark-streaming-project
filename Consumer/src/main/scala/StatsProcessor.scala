@@ -1,14 +1,61 @@
-import org.apache.spark.sql.{SparkSession, DataFrame}
-import org.apache.spark.sql.expressions.Window
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions._
 import Config._
-
-import UpdateDatabase.{
-    updateReviewEvolutionTable,
-    updateTopCategoriesTable
-}
+import UpdateDatabase.{updateBusinessTable, updateReviewEvolutionTable, updateTopCategoriesTable, updateUserTable}
+import org.apache.spark.sql.expressions.Window
 
 object StatsProcessor {
+
+    def processUsersStates(spark: SparkSession, allUsersDF: DataFrame): Unit = {
+        val df_reviews_db = spark.read
+            .format("jdbc")
+            .options(DB_CONFIG + ("dbtable" -> REVIEW_TABLE))
+            .load()
+            .select("user_id", "stars", "useful", "funny", "cool")
+
+        val filteredUsers = allUsersDF
+            .join(df_reviews_db, Seq("user_id"), "inner")
+
+        val userStats = filteredUsers
+            .groupBy("user_id")
+            .agg(
+                count("*").alias("total_reviews"),
+                sum("useful").alias("useful_count"),
+                avg("useful").alias("avg_useful"),
+                sum("funny").alias("funny_count"),
+                avg("funny").alias("avg_funny"),
+                avg("stars").alias("avg_stars")
+                )
+            .orderBy(desc("total_reviews"))
+
+        updateUserTable(userStats)
+    }
+
+    def processBusinessState(spark: SparkSession, allBusiness: DataFrame): Unit = {
+        val reviews = spark.read
+          .format("jdbc")
+          .options(DB_CONFIG + ("dbtable" -> REVIEW_TABLE))
+          .load()
+          .select("business_id", "stars", "useful", "funny", "cool")
+
+        val reviewStats = reviews
+          .groupBy("business_id")
+          .agg(
+            count("*").alias("total_reviews"),
+            sum("useful").alias("useful_count"),
+            avg("useful").alias("avg_useful"),
+            sum("funny").alias("funny_count"),
+            avg("funny").alias("avg_funny"),
+            avg("stars").alias("avg_stars")
+          )
+          .orderBy(desc("total_reviews"))
+
+        val businessStates = allBusiness
+            .join(reviewStats, Seq("business_id"), "inner")
+
+        updateBusinessTable(businessStates)
+    }
+
     def processReviewEvolution(spark: SparkSession): Unit = {
         val df_review_db = spark.read
             .format("jdbc")
@@ -23,25 +70,22 @@ object StatsProcessor {
             .agg(count("review_id").alias("total_reviews"))
             .orderBy("parsed_date")
         
-        updateReviewEvolutionTable(spark, review_by_date)
+        updateReviewEvolutionTable(review_by_date)
     }
 
     def saveNoteStarsDistribution(spark: SparkSession): Unit = {
-        // Lecture de la table des reviews
         val dfReviews = spark.read
           .format("jdbc")
           .options(DB_CONFIG + ("dbtable" -> REVIEW_TABLE))
           .load()
           .select("stars")
 
-        // Agrégation : compter le nombre d'avis par note
         val noteDistribution = dfReviews
           .groupBy("stars")
           .count()
-          .withColumnRenamed("count", "nb_notes") // renommage pour plus de clarté
+          .withColumnRenamed("count", "nb_notes")
           .orderBy("stars")
 
-        // Sauvegarde dans une table JDBC
         noteDistribution.write
           .format("jdbc")
           .options(DB_CONFIG + ("dbtable" -> NOTE_DISTRIBUTION_TABLE))
@@ -49,23 +93,61 @@ object StatsProcessor {
           .save()
     }
 
-    def processTopCategories(spark: SparkSession): Unit = {
-        val businessDF = spark.read
-            .format("jdbc")
-            .options(DB_CONFIG + ("dbtable" -> BUSINESS_TABLE))
-            .load()
-            .select("categories")
 
-        val categoriesDF = businessDF
-            .withColumn("category", explode(split(col("categories"), ",\\s*")))
-            .filter(col("category").isNotNull)
+  def processReviewDistributionByUseful(spark: SparkSession) : Unit = {
+    val reviews = spark.read
+      .format("jdbc")
+      .options(DB_CONFIG + ("dbtable" -> REVIEW_TABLE))
+      .load()
+      .select("stars", "useful")
 
-        val topCategories = categoriesDF
-            .groupBy("category")
-            .count()
-            .orderBy(desc("count"))
-            .limit(10)
+    val reviewDistribution = reviews
+      .groupBy("stars")
+      .agg(
+        count("*").alias("nb_reviews"),
+        sum("useful").alias("nb_useful")
+      )
+      .orderBy("nb_useful")
 
-        updateTopCategoriesTable(topCategories)
-    }
+    reviewDistribution.write
+      .format("jdbc")
+      .options(DB_CONFIG + ("dbtable" -> REVIEW_DISTRIBUTION_BY_USEFUL_TABLE))
+      .mode("overwrite")
+      .save()
+  }
+
+
+  def processTopCategoriesPerRating(spark: SparkSession): Unit = {
+    val businessDF = spark.read
+      .format("jdbc")
+      .options(DB_CONFIG + ("dbtable" -> BUSINESS_TABLE))
+      .load()
+      .select("categories", "avg_stars")
+
+    val explodedDF = businessDF
+      .withColumn("category", explode(split(col("categories"), ",\\s*")))
+      .filter(col("category").isNotNull && length(trim(col("category"))) > 0)
+      .withColumn("rounded_rating", round(col("avg_stars")).cast("int"))
+
+    // Compter combien de fois chaque catégorie apparaît par note (1 à 5)
+    val categoryStats = explodedDF
+      .groupBy("rounded_rating", "category")
+      .agg(count("*").alias("nb_occurrences"))
+
+    // Utiliser window pour garder le Top 10 par note
+    val windowSpec = Window.partitionBy("rounded_rating").orderBy(desc("nb_occurrences"))
+
+    val topCategories = categoryStats
+      .withColumn("rank", row_number().over(windowSpec))
+      .filter(col("rank") <= 10)
+      .drop("rank")
+
+    // Sauvegarder les résultats dans une table PostgreSQL
+    topCategories.write
+      .format("jdbc")
+      .options(DB_CONFIG + ("dbtable" -> "top_categories_by_rating"))
+      .mode("overwrite")
+      .save()
+  }
+
 }

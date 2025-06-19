@@ -155,15 +155,6 @@ else:
 
     # Affichage de l’entreprise sélectionnée
     st.markdown("#### 🧾 Détails de l'entreprise sélectionnée")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown(f"**Nom :** {selected_business['name']}")
-        st.markdown(f"**Ville :** {selected_business['city']}")
-        st.markdown(f"**Adresse :** {selected_business['address']}")
-    with col2:
-        st.markdown(f"**Note moyenne :** ⭐ {selected_business['avg_stars']:.1f}")
-        st.markdown(f"**Utilité :** 👍 {selected_business['useful_count']}")
-        st.markdown(f"**Humour :** 😂 {selected_business['funny_count']}")
     categories = selected_business.get("categories", "")
     if categories:
         st.markdown("**Catégories :**")

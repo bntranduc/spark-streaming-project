@@ -51,7 +51,7 @@ object Config {
   val REVIEW_TABLE: String = "review_table"
 
   // User
-  val USER_ARTEFACT_PATH = DATASET_PATH + "/users.parquet"
+  val USER_ARTEFACT_PATH: String = DATASET_PATH + "/users.parquet"
   val USER_SCHEMA: StructType = StructType(List(
     StructField("user_id", StringType, true),
     StructField("friends", StringType, true),
@@ -65,7 +65,7 @@ object Config {
   // Transformations
   val REVIEW_EVOLUTION_TABLE: String = "review_evolution_table"
   val TOP_FUN_BUSINESS_TABLE: String = "top_fun_business_table"
-  val TOP_USEFULL_USER_TABLE: String = "top_usefull_user_table"
+  val TOP_USEFUL_USER_TABLE: String = "top_useful_user_table"
   val TOP_FAITHFUL_USER_TABLE: String = "top_faithful_user_table"
   val TOP_RATED_BY_CATEGORY_TABLE: String = "top_rated_by_category_table"
   val TOP_POPULAR_BUSINESS_MONTHLY_TABLE: String = "top_popular_business_monthly_table"
@@ -75,6 +75,7 @@ object Config {
   val ACTIVITY_EVOLUTION_TABLE: String = "activity_evolution_table"
   val ELITE_IMPACT_TABLE: String = "elite_impact_on_rating_table"
 
-  val NOTE_DISTRIBUTION_TABLE: String = "note_distribution_table"
+  val REVIEW_DISTRIBUTION_BY_USEFUL_TABLE = "review_distribution_useful"
+  val NOTE_DISTRIBUTION_TABLE: String = "review_distribution_table"
   val TOP_CATEGORIES_TABLE: String = "top_categories_table"
 }

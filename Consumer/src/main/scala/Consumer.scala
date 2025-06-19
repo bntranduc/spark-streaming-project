@@ -4,8 +4,8 @@ import org.apache.spark.sql.functions._
 import scala.util.{Failure, Success, Try}
 import Config._
 import DataSourceReader.loadOrCreateArtefactSafe
-import UpdateDatabase.{updateBusinessTable, updateReviewTable, updateUserTable}
-import StatsProcessor.{processReviewEvolution, processTopCategories, saveNoteStarsDistribution}
+import UpdateDatabase.updateReviewTable
+import StatsProcessor.{processBusinessState, processReviewDistributionByUseful, processReviewEvolution, processTopCategoriesPerRating, processUsersStates, saveNoteStarsDistribution}
 
 import scala.annotation.tailrec
 
@@ -20,6 +20,9 @@ object Consumer {
       .getOrCreate()
 
     spark.sparkContext.setLogLevel("ERROR")
+
+    processTopCategoriesPerRating(spark)
+    System.exit(1)
 
     try {
       val usersDF = loadOrCreateArtefactSafe(
@@ -79,13 +82,13 @@ object Consumer {
             .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
 
               updateReviewTable(spark, batchDF)
-              updateUserTable(spark, usersDF)
-              updateBusinessTable(spark, businessDF)
-
-              saveNoteStarsDistribution(spark)
+              processUsersStates(spark, usersDF)
+              processBusinessState(spark, businessDF)
+              processReviewDistributionByUseful(spark)
               processReviewEvolution(spark)
-              processTopCategories(spark)
+
               println(s"Batch $batchId traité et statistiques insérées.")
+
             }
             .outputMode("append")
             .start()
@@ -120,11 +123,4 @@ object Consumer {
           None
       }
   }
-
-  def getAllFromTable(spark: SparkSession, table: String): DataFrame = {
-        return spark.read
-          .format("jdbc")
-          .options(DB_CONFIG + ("dbtable" -> table))
-          .load()
-    }
 }
