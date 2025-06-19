@@ -63,7 +63,7 @@ with col3:
     draw_pie(df_3, 3)
 
 st.markdown("---")
-st.markdown("#### 2 - Distribution de movaise par zone geographique")
+st.markdown("### 2 - Distribution de movaise par zone geographique")
 with st.spinner("Chargement des catégories..."):
     try:
         query = "SELECT longitude, latitude FROM business_table WHERE rounded_rating < 4"
@@ -79,16 +79,39 @@ with st.spinner("Chargement des catégories..."):
     else:
         st.info("Aucune donnée géographique disponible pour les entreprises mal notées.")
 
-
-
 st.markdown("---")
-
-# 🔸 Statut d’ouverture
-st.markdown("#### 🚪 Statut d’ouverture (`is_open`)")
+st.markdown("### 3 - Note moyenne par statut d’ouverture")
 st.markdown(
     "Vérifier si les entreprises fermées reçoivent plus de mauvaises notes, ce qui pourrait indiquer des problèmes liés à la qualité."
 )
-# 👉 METTRE UN GRAPHIQUE ICI (comparaison notes moyennes entreprises ouvertes vs fermées)
+
+with st.spinner("Chargement des statistiques..."):
+    try:
+        query = "SELECT is_open, avg_rating, nbr_business FROM business_by_status_table"
+        status_df = query_db(query)
+    except Exception as e:
+        st.error("Erreur lors de la récupération des données.")
+        st.exception(e)
+        status_df = None
+
+    if status_df is not None and not status_df.empty:
+        # Conversion pour affichage lisible
+        status_df["Statut"] = status_df["is_open"].map({1: "Ouvertes", 0: "Fermées"})
+
+        # Affichage de la moyenne des notes
+        fig = px.bar(
+            status_df,
+            x="Statut",
+            y="avg_rating",
+            color="Statut",
+            text="avg_rating",
+            labels={"avg_rating": "Note moyenne"},
+        )
+        fig.update_layout(showlegend=False, yaxis_range=[0, 5])
+        st.plotly_chart(fig, use_container_width=True)
+
+    else:
+        st.info("Aucune donnée disponible pour les notes par statut.")
 
 st.markdown("---")
 

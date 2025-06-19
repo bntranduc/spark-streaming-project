@@ -6,6 +6,33 @@ import org.apache.spark.sql.expressions.Window
 
 object StatsProcessor {
 
+  def processRatingByOpenStatus(spark: SparkSession): Unit = {
+    import org.apache.spark.sql.functions._
+
+    val businessDF = spark.read
+      .format("jdbc")
+      .options(DB_CONFIG + ("dbtable" -> BUSINESS_TABLE))
+      .load()
+      .select("is_open", "rounded_rating")
+
+    val avgRatingByStatus = businessDF
+      .groupBy("is_open")
+      .agg(
+        count("*").alias("nbr_business"),
+        avg("rounded_rating").alias("avg_rating")
+      )
+      .orderBy(desc("is_open"))
+
+    avgRatingByStatus.show()
+
+    avgRatingByStatus.write
+      .format("jdbc")
+      .options(DB_CONFIG + ("dbtable" -> "business_by_status_table"))
+      .mode("overwrite")
+      .save()
+  }
+
+
   def processBusinessLocationState(sparkSession: SparkSession): Unit = {
 
     val businessDF = sparkSession.read
