@@ -6,6 +6,27 @@ import org.apache.spark.sql.expressions.Window
 
 object StatsProcessor {
 
+  def processBusinessLocationState(sparkSession: SparkSession): Unit = {
+
+    val businessDF = sparkSession.read
+      .format("jdbc")
+      .options(DB_CONFIG + ("dbtable" -> BUSINESS_TABLE))
+      .load()
+      .select("state", "rounded_rating")
+
+    val groupedBusiness = businessDF
+      .groupBy("state", "rounded_rating")
+      .agg(count("*").alias("nbr_business"))
+      .orderBy("state", "rounded_rating")
+
+    groupedBusiness.write
+      .format("jdbc")
+      .options(DB_CONFIG + ("dbtable" -> "business_by_location_by_state"))
+      .mode("overwrite")
+      .save()
+  }
+
+
     def processUsersStates(spark: SparkSession, allUsersDF: DataFrame): Unit = {
         val df_reviews_db = spark.read
             .format("jdbc")
@@ -25,7 +46,7 @@ object StatsProcessor {
                 sum("funny").alias("funny_count"),
                 avg("funny").alias("avg_funny"),
                 avg("stars").alias("avg_stars")
-                )
+            )
             .orderBy(desc("total_reviews"))
 
         updateUserTable(userStats)
@@ -48,6 +69,7 @@ object StatsProcessor {
             avg("funny").alias("avg_funny"),
             avg("stars").alias("avg_stars")
           )
+          .withColumn("rounded_rating", round(col("avg_stars")).cast("int"))
           .orderBy(desc("total_reviews"))
 
         val businessStates = allBusiness

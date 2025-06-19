@@ -1,6 +1,7 @@
 from database.getDataFromDatabase import *
 import streamlit as st
 import matplotlib.pyplot as plt
+import plotly.express as px
 
 st.set_page_config(
     page_title="Yelp Dashboard – Analyse des avis",
@@ -62,13 +63,23 @@ with col3:
     draw_pie(df_3, 3)
 
 st.markdown("---")
+st.markdown("#### 2 - Distribution de movaise par zone geographique")
+with st.spinner("Chargement des catégories..."):
+    try:
+        query = "SELECT longitude, latitude FROM business_table WHERE rounded_rating < 4"
+        business = query_db(query)
+    except Exception as e:
+        st.error("Erreur lors de la récupération des données.")
+        st.exception(e)
+        business = None
 
-# 🔸 Localisation géographique
-st.markdown("#### 📍 Localisation (`city`, `state`)")
-st.markdown(
-    "Analyser si certaines zones géographiques présentent plus de mauvaises notes, pour détecter des facteurs régionaux."
-)
-# 👉 METTRE UN GRAPHIQUE ICI (carte ou heatmap des notes par ville/état)
+    if business is not None and not business.empty:
+        business = business.dropna(subset=["longitude", "latitude"])
+        st.map(business, latitude="latitude", longitude="longitude")
+    else:
+        st.info("Aucune donnée géographique disponible pour les entreprises mal notées.")
+
+
 
 st.markdown("---")
 

@@ -5,7 +5,7 @@ import scala.util.{Failure, Success, Try}
 import Config._
 import DataSourceReader.loadOrCreateArtefactSafe
 import UpdateDatabase.updateReviewTable
-import StatsProcessor.{processBusinessState, processReviewDistributionByUseful, processReviewEvolution, processTopCategoriesPerRating, processUsersStates, saveNoteStarsDistribution}
+import StatsProcessor.{processBusinessLocationState, processBusinessState, processReviewDistributionByUseful, processReviewEvolution, processTopCategoriesPerRating, processUsersStates, saveNoteStarsDistribution}
 
 import scala.annotation.tailrec
 
@@ -21,8 +21,7 @@ object Consumer {
 
     spark.sparkContext.setLogLevel("ERROR")
 
-    processTopCategoriesPerRating(spark)
-    System.exit(1)
+
 
     try {
       val usersDF = loadOrCreateArtefactSafe(
@@ -39,8 +38,12 @@ object Consumer {
         BUSINESS_JSON_PATH,
         BUSINESS_ARTEFACT_PATH,
         BUSINESS_SCHEMA,
-        Seq("business_id", "name", "city", "address" ,"state", "categories", "is_Open"),
+        Seq("business_id", "name", "city", "address" ,"latitude", "longitude","state", "categories", "is_Open"),
       )
+      processBusinessState(spark, businessDF)
+      //processBusinessLocationState(spark)
+      System.exit(1)
+
       consumeKafkaTopic(spark, businessDF, userDF)
     } catch {
       case e: java.io.FileNotFoundException =>

@@ -28,6 +28,8 @@ object Config {
     StructField("name", StringType, true),
     StructField("city", StringType, true),
     StructField("address", StringType, true),
+    StructField("longitude", DoubleType, true),
+    StructField("latitude", DoubleType, true),
     StructField("state", StringType, true),
     StructField("is_open", IntegerType, true),
     StructField("categories", StringType, true),
