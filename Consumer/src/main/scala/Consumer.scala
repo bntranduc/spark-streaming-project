@@ -87,7 +87,8 @@ object Consumer {
               processReviewDistributionByUseful(spark)
               processRatingByOpenStatus(spark)
               processReviewEvolution(spark)
-
+              processTopCategoriesPerRating(spark)
+              saveNoteStarsDistribution(spark)
               println(s"Batch $batchId traité et statistiques insérées.")
 
             }
