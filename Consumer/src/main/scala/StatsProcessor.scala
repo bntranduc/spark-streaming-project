@@ -6,24 +6,72 @@ import org.apache.spark.sql.expressions.Window
 
 object StatsProcessor {
 
-  def processRatingByOpenStatus(spark: SparkSession): Unit = {
+  def processMonthlyReviewStats(spark: SparkSession): Unit = {
     import org.apache.spark.sql.functions._
 
-    val businessDF = spark.read
+    val df_reviews = spark.read
       .format("jdbc")
-      .options(DB_CONFIG + ("dbtable" -> BUSINESS_TABLE))
+      .options(DB_CONFIG + ("dbtable" -> REVIEW_TABLE))
       .load()
-      .select("is_open", "rounded_rating")
+      .select("stars", "date")
+
+    val seasonalStats = df_reviews
+      .withColumn("month_name", date_format(col("date"), "MMMM"))
+      .withColumn("month_num", month(col("date")))
+      .groupBy("month_num", "month_name")
+      .agg(
+        count("*").alias("total_reviews"),
+        avg("stars").alias("avg_stars")
+      )
+      .orderBy("month_num")
+
+    seasonalStats.write
+      .format("jdbc")
+      .options(DB_CONFIG + ("dbtable" -> "seasonal_review_stats"))
+      .mode("overwrite")
+      .save()
+  }
+
+
+  def processWeeklyReviewStats(spark: SparkSession): Unit = {
+
+    val df_reviews = spark.read
+      .format("jdbc")
+      .options(DB_CONFIG + ("dbtable" -> REVIEW_TABLE))
+      .load()
+      .select("stars", "date")
+
+    val weeklyStats = df_reviews
+      .withColumn("day_name", date_format(col("date"), "EEEE"))
+      .withColumn("day_num", expr("EXTRACT(DAYOFWEEK FROM date)"))
+      .groupBy("day_num", "day_name")
+      .agg(
+        count("*").alias("total_reviews"),
+        avg("stars").alias("avg_stars")
+      )
+      .orderBy("day_num")
+
+    weeklyStats.write
+      .format("jdbc")
+      .options(DB_CONFIG + ("dbtable" -> "weekly_review_stats"))
+      .mode("overwrite")
+      .save()
+  }
+
+  def processRatingByOpenStatus(spark: SparkSession): Unit = {
+    val businessDF = spark.read
+        .format("jdbc")
+        .options(DB_CONFIG + ("dbtable" -> BUSINESS_TABLE))
+        .load()
+        .select("is_open", "rounded_rating")
 
     val avgRatingByStatus = businessDF
-      .groupBy("is_open")
-      .agg(
-        count("*").alias("nbr_business"),
-        avg("rounded_rating").alias("avg_rating")
-      )
-      .orderBy(desc("is_open"))
-
-    avgRatingByStatus.show()
+        .groupBy("is_open")
+        .agg(
+          count("*").alias("nbr_business"),
+          avg("rounded_rating").alias("avg_rating")
+        )
+        .orderBy(desc("is_open"))
 
     avgRatingByStatus.write
       .format("jdbc")
@@ -177,12 +225,10 @@ object StatsProcessor {
       .filter(col("category").isNotNull && length(trim(col("category"))) > 0)
       .withColumn("rounded_rating", round(col("avg_stars")).cast("int"))
 
-    // Compter combien de fois chaque catégorie apparaît par note (1 à 5)
     val categoryStats = explodedDF
       .groupBy("rounded_rating", "category")
       .agg(count("*").alias("nb_occurrences"))
 
-    // Utiliser window pour garder le Top 10 par note
     val windowSpec = Window.partitionBy("rounded_rating").orderBy(desc("nb_occurrences"))
 
     val topCategories = categoryStats
@@ -190,7 +236,6 @@ object StatsProcessor {
       .filter(col("rank") <= 10)
       .drop("rank")
 
-    // Sauvegarder les résultats dans une table PostgreSQL
     topCategories.write
       .format("jdbc")
       .options(DB_CONFIG + ("dbtable" -> "top_categories_by_rating"))

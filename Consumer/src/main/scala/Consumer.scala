@@ -5,7 +5,7 @@ import scala.util.{Failure, Success, Try}
 import Config._
 import DataSourceReader.loadOrCreateArtefactSafe
 import UpdateDatabase.updateReviewTable
-import StatsProcessor.{processBusinessLocationState, processBusinessState, processRatingByOpenStatus, processReviewDistributionByUseful, processReviewEvolution, processTopCategoriesPerRating, processUsersStates, saveNoteStarsDistribution}
+import StatsProcessor.{processBusinessLocationState, processBusinessState, processMonthlyReviewStats, processRatingByOpenStatus, processReviewDistributionByUseful, processReviewEvolution, processTopCategoriesPerRating, processUsersStates, processWeeklyReviewStats, saveNoteStarsDistribution}
 
 import scala.annotation.tailrec
 
@@ -20,6 +20,9 @@ object Consumer {
       .getOrCreate()
 
     spark.sparkContext.setLogLevel("ERROR")
+
+
+    System.exit(1)
 
     try {
       val usersDF = loadOrCreateArtefactSafe(
@@ -89,6 +92,9 @@ object Consumer {
               processReviewEvolution(spark)
               processTopCategoriesPerRating(spark)
               saveNoteStarsDistribution(spark)
+              processMonthlyReviewStats(spark)
+              processWeeklyReviewStats(spark)
+
               println(s"Batch $batchId traité et statistiques insérées.")
             }
             .outputMode("append")

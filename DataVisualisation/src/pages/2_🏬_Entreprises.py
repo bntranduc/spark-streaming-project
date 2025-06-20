@@ -115,17 +115,7 @@ with st.spinner("Chargement des statistiques..."):
 
 st.markdown("---")
 
-# 🔸 Ancienneté et volume d’avis
-st.markdown("#### ⏳ Ancienneté et nombre d’avis")
-st.markdown(
-    "Étudier si les entreprises plus anciennes ou avec plus d’avis ont tendance à mieux ou moins bien être notées."
-)
-# 👉 METTRE UN GRAPHIQUE ICI (scatter plot ancienneté vs note moyenne, ou nb avis vs note)
-
-st.markdown("---")
-
-# 🧠 Synthèse
-st.markdown("### 🧠 Synthèse")
+st.markdown("## Synthèse")
 st.info(
-    "👉 Ces analyses aident à repérer les facteurs liés à l’entreprise qui influencent la satisfaction client, et à cibler les causes structurelles des mauvaises notes."
+    "Ces analyses aident à repérer les facteurs liés à l’entreprise qui influencent la satisfaction client, et à cibler les causes structurelles des mauvaises notes."
 )
