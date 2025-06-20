@@ -21,9 +21,6 @@ object Consumer {
 
     spark.sparkContext.setLogLevel("ERROR")
 
-
-    System.exit(1)
-
     try {
       val usersDF = loadOrCreateArtefactSafe(
         spark,

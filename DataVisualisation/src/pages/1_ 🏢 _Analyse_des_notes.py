@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Yelp Dashboard – Analyse des avis",page_icon="📊",layout="wide",initial_sidebar_state="expanded")
 
-st.markdown("# 📝 Analyse des Avis – Table `review_table`")
+st.markdown("# 📝 Analyse des Avis")
 st.markdown("---")
 st.markdown("### Objectif Général")
 st.markdown("""

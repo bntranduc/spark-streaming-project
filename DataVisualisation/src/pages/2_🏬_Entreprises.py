@@ -10,12 +10,21 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-st.markdown("# 🏢 Analyse de la Table Entreprises – `business_table`")
+st.markdown("# 🏢 Analyse des Entreprises mal notés")
 st.markdown("---")
 st.markdown("## Objectif")
 st.markdown("##### Comprendre les caractéristiques des entreprises qui pourraient influencer leurs notes, notamment celles qui reçoivent des avis négatifs.")
 st.markdown("## Axes d’analyse :")
-
+st.markdown("""
+Voici les axes étudiés pour mieux comprendre les caractéristiques des entreprises recevant des avis négatifs :
+1. **Catégories les plus associées aux mauvaises notes**  
+   - Identifier les types d’activités les plus souvent mal notés (restauration, services, etc.)
+2. **Répartition géographique des entreprises mal notées**  
+   - Visualiser si certaines zones géographiques concentrent plus d’avis négatifs.
+3. **Lien entre statut d’ouverture et mauvaise note**  
+   - Vérifier si les entreprises fermées sont plus susceptibles d’avoir reçu de mauvaises évaluations.
+---
+""")
 st.markdown("### 1 - Catégories les plus associées aux mauvaises notes")
 
 with st.spinner("Chargement des catégories..."):
