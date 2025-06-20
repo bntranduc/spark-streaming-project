@@ -1,15 +1,17 @@
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions._
-
 import scala.util.{Failure, Success, Try}
+
 import Config._
 import DataSourceReader.loadOrCreateArtefactSafe
+import ReviewStatsProcessor.{processMonthlyReviewStats, processReviewDistribution, processReviewDistributionByUseful, processWeeklyReviewStats}
+import BusinessStatsProcessor.{processBusinessLocationState, processBusinessState, processRatingByOpenStatus, processTopCategoriesPerRating}
+import UserStatsProcessor.processUsersStates
 import UpdateDatabase.updateReviewTable
-import StatsProcessor.{processBusinessLocationState, processBusinessState, processMonthlyReviewStats, processRatingByOpenStatus, processReviewDistributionByUseful, processReviewEvolution, processTopCategoriesPerRating, processUsersStates, processWeeklyReviewStats, saveNoteStarsDistribution}
 
 import scala.annotation.tailrec
 
-object Consumer {
+object Main {
 
   def main(args: Array[String]): Unit = {
     val spark = SparkSession.builder()
@@ -83,14 +85,18 @@ object Consumer {
               processUsersStates(spark, usersDF)
               processBusinessState(spark, businessDF)
 
-              processBusinessLocationState(spark)
-              processReviewDistributionByUseful(spark)
-              processRatingByOpenStatus(spark)
-              processReviewEvolution(spark)
-              processTopCategoriesPerRating(spark)
-              saveNoteStarsDistribution(spark)
+              // REVIEWS
+              processReviewDistribution(spark)
               processMonthlyReviewStats(spark)
               processWeeklyReviewStats(spark)
+              processReviewDistributionByUseful(spark)
+
+              // BUSINESS
+              processTopCategoriesPerRating(spark)
+              processBusinessLocationState(spark)
+              processRatingByOpenStatus(spark)
+
+              // USER
 
               println(s"Batch $batchId traité et statistiques insérées.")
             }

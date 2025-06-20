@@ -34,7 +34,6 @@ object Config {
     StructField("is_open", IntegerType, true),
     StructField("categories", StringType, true),
   ))
-  val BUSINESS_TABLE: String = "business_table"
 
   // Review
   val REVIEW_TOPIC: String = "yelp-topic-review"
@@ -50,7 +49,6 @@ object Config {
     StructField("date", StringType, true),
     StructField("id_date", IntegerType, true)
   ))
-  val REVIEW_TABLE: String = "review_table"
 
   // User
   val USER_ARTEFACT_PATH: String = DATASET_PATH + "/users.parquet"
@@ -62,22 +60,21 @@ object Config {
     StructField("yelping_since", TimestampType, true),
     StructField("name", StringType, true)
   ))
+
+  // REVIEWS
+  val REVIEW_TABLE: String = "review_table"
+  val REVIEW_DISTRIBUTION_TABLE: String = "review_distribution_table"
+  val SEASONAL_REVIEW_STARS_TABLE= "seasonal_review_stats"
+  val WEAKLY_REVIEW_STARS = "weekly_review_stats"
+  val REVIEW_DISTRIBUTION_BY_USEFUL_TABLE = "review_distribution_useful"
+
+  // BUSINESS
+  val BUSINESS_TABLE: String = "business_table"
+  val TOP_CATEGORIES_TABLE: String = "top_categories_table"
+
+  // USER
   val USER_TABLE: String = "user_table"
 
-  // Transformations
-  val REVIEW_EVOLUTION_TABLE: String = "review_evolution_table"
-  val TOP_FUN_BUSINESS_TABLE: String = "top_fun_business_table"
-  val TOP_USEFUL_USER_TABLE: String = "top_useful_user_table"
-  val TOP_FAITHFUL_USER_TABLE: String = "top_faithful_user_table"
-  val TOP_RATED_BY_CATEGORY_TABLE: String = "top_rated_by_category_table"
-  val TOP_POPULAR_BUSINESS_MONTHLY_TABLE: String = "top_popular_business_monthly_table"
-  val TOP_POPULAR_USER_TABLE: String = "top_popular_user_table"
-  val APEX_PREDATOR_USER_TABLE: String = "apex_predator_user_table"
-  val CLOSED_BUSINESS_RATING_STATS_TABLE: String = "closed_business_rating_stats_table"
-  val ACTIVITY_EVOLUTION_TABLE: String = "activity_evolution_table"
-  val ELITE_IMPACT_TABLE: String = "elite_impact_on_rating_table"
 
-  val REVIEW_DISTRIBUTION_BY_USEFUL_TABLE = "review_distribution_useful"
-  val REVIEW_DISTRIBUTION_TABLE: String = "review_distribution_table"
-  val TOP_CATEGORIES_TABLE: String = "top_categories_table"
+
 }

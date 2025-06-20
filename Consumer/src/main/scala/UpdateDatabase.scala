@@ -1,5 +1,5 @@
+import Config.{BUSINESS_TABLE, DB_CONFIG, REVIEW_TABLE, TOP_CATEGORIES_TABLE, USER_TABLE}
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import Config._
 
 object UpdateDatabase {
 
@@ -32,14 +32,6 @@ object UpdateDatabase {
         business.write
             .format("jdbc")
             .options(DB_CONFIG + ("dbtable" -> BUSINESS_TABLE))
-            .mode("overwrite")
-            .save()
-    }
-
-    def updateReviewEvolutionTable(review_by_date: DataFrame): Unit = {
-        review_by_date.write
-            .format("jdbc")
-            .options(DB_CONFIG + ("dbtable" -> REVIEW_EVOLUTION_TABLE))
             .mode("overwrite")
             .save()
     }

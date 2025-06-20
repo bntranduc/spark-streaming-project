@@ -100,7 +100,17 @@ else:
     #     st.exception(e)
 
 st.markdown("## Problématique")
-st.markdown(
-    "Déterminer les entrerprise pour les raison pour les quels les entreprise recoivement de movaise ?"
-    "Comment"
-)
+st.markdown("> ### Pourquoi certaines entreprises reçoivent-elles de mauvaises notes ?")
+st.markdown("""
+L’objectif de cette étude est de répondre aux questions suivantes :
+
+- **Quelles sont les caractéristiques communes aux entreprises qui reçoivent de mauvaises notes ?**  
+  (ex : type d’activité, localisation, statut ouvert/fermé...)
+
+- **Quels sont les éléments récurrents dans les avis négatifs laissés par les utilisateurs ?**  
+  (ex : qualité du service, prix, propreté, délai...)
+
+- **Existe-t-il des tendances saisonnières ou hebdomadaires dans la distribution des mauvaises évaluations ?**
+
+- **Peut-on identifier des signaux faibles qui précèdent une fermeture d’entreprise à partir des avis ?**
+""")

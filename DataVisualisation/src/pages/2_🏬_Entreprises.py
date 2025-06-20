@@ -26,7 +26,15 @@ Voici les axes étudiés pour mieux comprendre les caractéristiques des entrepr
 ---
 """)
 st.markdown("### 1 - Catégories les plus associées aux mauvaises notes")
+st.markdown("""
+**Pourquoi cette analyse ?**
+            
+- Certaines catégories professionnelles sont plus exposées à des avis critiques (ex: fast-food, réparations…).
+- Identifier les types de services les plus fréquemment associés aux avis négatifs.
+- Cibler les domaines où la satisfaction client semble plus difficile à atteindre.
 
+Ci-dessous, les **10 catégories les plus fréquentes** pour chaque niveau de mauvaise note.
+""")
 with st.spinner("Chargement des catégories..."):
     try:
         query_1 = "SELECT * FROM top_categories_by_rating WHERE rounded_rating = 1 ORDER BY nb_occurrences DESC LIMIT 10"
@@ -73,6 +81,15 @@ with col3:
 
 st.markdown("---")
 st.markdown("### 2 - Distribution de movaise par zone geographique")
+st.markdown("""
+**Pourquoi cette analyse ?**
+
+- Les avis négatifs peuvent être influencés par des contextes géographiques (villes très touristiques, zones rurales, quartiers sensibles…).
+- Visualiser les concentrations d’entreprises mal notées permet d’identifier des zones à problème.
+- Utile pour des analyses urbaines ou stratégiques (implantation, attractivité…).
+
+La carte suivante affiche les entreprises ayant une **note moyenne < 4★**.
+""")
 with st.spinner("Chargement des catégories..."):
     try:
         query = "SELECT longitude, latitude FROM business_table WHERE rounded_rating < 4"
@@ -90,10 +107,15 @@ with st.spinner("Chargement des catégories..."):
 
 st.markdown("---")
 st.markdown("### 3 - Note moyenne par statut d’ouverture")
-st.markdown(
-    "Vérifier si les entreprises fermées reçoivent plus de mauvaises notes, ce qui pourrait indiquer des problèmes liés à la qualité."
-)
+st.markdown("""
+**Pourquoi cette analyse ?**
 
+- Il est pertinent de savoir si les **entreprises qui ont fermé** étaient déjà mal notées avant.
+- Cela peut suggérer un lien entre **qualité perçue** et **viabilité économique**.
+- Aide à anticiper les risques pour certaines entreprises encore ouvertes avec de mauvaises évaluations.
+
+Graphique : comparaison des **notes moyennes** entre entreprises **ouvertes** et **fermées**.
+""")
 with st.spinner("Chargement des statistiques..."):
     try:
         query = "SELECT is_open, avg_rating, nbr_business FROM business_by_status_table"
