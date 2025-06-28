@@ -1,12 +1,12 @@
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions._
-import scala.util.{Failure, Success, Try}
 
-import Config._
+import scala.util.{Failure, Success, Try}
 import DataSourceReader.loadOrCreateArtefactSafe
 import ReviewStatsProcessor.{processMonthlyReviewStats, processReviewDistribution, processReviewDistributionByUseful, processWeeklyReviewStats}
 import BusinessStatsProcessor.{processBusinessLocationState, processBusinessState, processRatingByOpenStatus, processTopCategoriesPerRating}
-import UserStatsProcessor.processUsersStates
+import Config.{BOOTSTRAP_SERVER, BUSINESS_ARTEFACT_PATH, BUSINESS_JSON_PATH, BUSINESS_SCHEMA, REVIEW_SCHEMA, REVIEW_TOPIC, USER_ARTEFACT_PATH, USER_JSON_PATH, USER_SCHEMA}
+import UserStatsProcessor.{detectInfluentialUsers, detectPolarizedUsers, detectSerialOffenders, processGeneralUsersStats, processUsersSeverityStats, processUsersStates}
 import UpdateDatabase.updateReviewTable
 
 import scala.annotation.tailrec
@@ -79,24 +79,29 @@ object Main {
           ).select("data.*")
           
           parsedMessages.writeStream
-            .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
+            .foreachBatch { (newBatch: DataFrame, batchId: Long) =>
 
-              updateReviewTable(spark, batchDF)
-              processUsersStates(spark, usersDF)
-              processBusinessState(spark, businessDF)
+              val allReviews = updateReviewTable(spark, newBatch)
+              val allUsers = processUsersStates(allUsersDF = usersDF, df_reviews_db = allReviews)
+              val allBusiness = processBusinessState(spark, businessDF, allReviews)
 
               // REVIEWS
-              processReviewDistribution(spark)
-              processMonthlyReviewStats(spark)
-              processWeeklyReviewStats(spark)
-              processReviewDistributionByUseful(spark)
+              processReviewDistribution(allReviews)
+              processMonthlyReviewStats(allReviews)
+              processWeeklyReviewStats(allReviews)
+              processReviewDistributionByUseful(allReviews)
 
               // BUSINESS
-              processTopCategoriesPerRating(spark)
-              processBusinessLocationState(spark)
-              processRatingByOpenStatus(spark)
+              processTopCategoriesPerRating(allBusiness)
+              processBusinessLocationState(allBusiness)
+              processRatingByOpenStatus(allBusiness)
 
               // USER
+              processGeneralUsersStats(allUsers)
+              processUsersSeverityStats(allUsers)
+              detectPolarizedUsers(allUsers)
+              detectInfluentialUsers(allUsers)
+              detectSerialOffenders(allReviews)
 
               println(s"Batch $batchId traité et statistiques insérées.")
             }

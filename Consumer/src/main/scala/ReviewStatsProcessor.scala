@@ -1,15 +1,9 @@
 import Config.{DB_CONFIG, REVIEW_DISTRIBUTION_BY_USEFUL_TABLE, REVIEW_DISTRIBUTION_TABLE, REVIEW_TABLE, SEASONAL_REVIEW_STARS_TABLE, WEAKLY_REVIEW_STARS}
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions._
 
 object ReviewStatsProcessor {
-  def processReviewDistribution(spark: SparkSession): Unit = {
-    val dfReviews = spark.read
-      .format("jdbc")
-      .options(DB_CONFIG + ("dbtable" -> REVIEW_TABLE))
-      .load()
-      .select("stars")
-
+  def processReviewDistribution(dfReviews: DataFrame): Unit = {
     val noteDistribution = dfReviews
       .groupBy("stars")
       .count()
@@ -23,14 +17,8 @@ object ReviewStatsProcessor {
       .save()
   }
 
-  def processMonthlyReviewStats(spark: SparkSession): Unit = {
-    val df_reviews = spark.read
-      .format("jdbc")
-      .options(DB_CONFIG + ("dbtable" -> REVIEW_TABLE))
-      .load()
-      .select("stars", "date")
-
-    val seasonalStats = df_reviews
+  def processMonthlyReviewStats(dfReviews: DataFrame): Unit = {
+    val seasonalStats = dfReviews
       .withColumn("month_name", date_format(col("date"), "MMMM"))
       .withColumn("month_num", month(col("date")))
       .groupBy("month_num", "month_name")
@@ -47,15 +35,8 @@ object ReviewStatsProcessor {
       .save()
   }
 
-  def processWeeklyReviewStats(spark: SparkSession): Unit = {
-
-    val df_reviews = spark.read
-      .format("jdbc")
-      .options(DB_CONFIG + ("dbtable" -> REVIEW_TABLE))
-      .load()
-      .select("stars", "date")
-
-    val weeklyStats = df_reviews
+  def processWeeklyReviewStats(dfReviews: DataFrame): Unit = {
+    val weeklyStats = dfReviews
       .withColumn("day_name", date_format(col("date"), "EEEE"))
       .withColumn("day_num", expr("EXTRACT(DAYOFWEEK FROM date)"))
       .groupBy("day_num", "day_name")
@@ -72,14 +53,8 @@ object ReviewStatsProcessor {
       .save()
   }
 
-  def processReviewDistributionByUseful(spark: SparkSession) : Unit = {
-    val reviews = spark.read
-      .format("jdbc")
-      .options(DB_CONFIG + ("dbtable" -> REVIEW_TABLE))
-      .load()
-      .select("stars", "useful")
-
-    val reviewDistribution = reviews
+  def processReviewDistributionByUseful(dfReviews: DataFrame) : Unit = {
+    val reviewDistribution = dfReviews
       .groupBy("stars")
       .agg(
         count("*").alias("nb_reviews"),

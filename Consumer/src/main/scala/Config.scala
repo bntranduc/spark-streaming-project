@@ -13,7 +13,7 @@ object Config {
   private val DB_NAME: String = sys.env.getOrElse("DATABASE_NAME", "spark_streaming_db")
   private val DB_HOST: String = sys.env.getOrElse("DATABASE_HOST", "localhost")
   private val DB_PORT: String = sys.env.getOrElse("DATABASE_PORT", "5432")
-  
+
   val DB_CONFIG: Map[String, String] = Map(
     "url" -> s"jdbc:postgresql://$DB_HOST:$DB_PORT/$DB_NAME",
     "user" -> sys.env.getOrElse("DATABASE_USER", "divinandretomadam"),
@@ -23,31 +23,33 @@ object Config {
 
   // Business
   val BUSINESS_ARTEFACT_PATH: String = DATASET_PATH + "/business.parquet"
-  val BUSINESS_SCHEMA: StructType = StructType(List(
-    StructField("business_id", StringType, true),
-    StructField("name", StringType, true),
-    StructField("city", StringType, true),
-    StructField("address", StringType, true),
-    StructField("longitude", DoubleType, true),
-    StructField("latitude", DoubleType, true),
-    StructField("state", StringType, true),
-    StructField("is_open", IntegerType, true),
-    StructField("categories", StringType, true),
-  ))
+  val BUSINESS_SCHEMA: StructType = StructType(
+    List(
+      StructField("name", StringType, true),
+      StructField("city", StringType, true),
+      StructField("business_id", StringType, true),
+      StructField("latitude", DoubleType, true),
+      StructField("address", StringType, true),
+      StructField("longitude", DoubleType, true),
+      StructField("state", StringType, true),
+      StructField("is_open", IntegerType, true),
+      StructField("categories", StringType, true),
+    ))
 
   // Review
   val REVIEW_TOPIC: String = "yelp-topic-review"
-  val REVIEW_SCHEMA: StructType = StructType(List(
-    StructField("review_id", StringType, true),
-    StructField("user_id", StringType, true),
-    StructField("business_id", StringType, true),
-    StructField("stars", DoubleType, true),
-    StructField("useful", IntegerType, true),
-    StructField("funny", IntegerType, true),
-    StructField("cool", IntegerType, true),
-    StructField("text", StringType, true),
-    StructField("date", StringType, true),
-    StructField("id_date", IntegerType, true)
+  val REVIEW_SCHEMA: StructType = StructType(
+    List(
+      StructField("review_id", StringType, true),
+      StructField("business_id", StringType, true),
+      StructField("user_id", StringType, true),
+      StructField("stars", DoubleType, true),
+      StructField("useful", IntegerType, true),
+      StructField("funny", IntegerType, true),
+      StructField("cool", IntegerType, true),
+      StructField("text", StringType, true),
+      StructField("date", StringType, true),
+      StructField("id_date", IntegerType, true)
   ))
 
   // User
@@ -74,7 +76,4 @@ object Config {
 
   // USER
   val USER_TABLE: String = "user_table"
-
-
-
 }

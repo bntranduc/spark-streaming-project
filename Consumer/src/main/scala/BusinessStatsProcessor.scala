@@ -5,14 +5,28 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions.{avg, col, count, desc, explode, length, round, row_number, split, sum, trim}
 
 object BusinessStatsProcessor {
+  def processBusinessState(spark: SparkSession, allBusiness: DataFrame, reviews: DataFrame): DataFrame = {
+    val reviewStats = reviews
+      .groupBy("business_id")
+      .agg(
+        count("*").alias("total_reviews"),
+        sum("useful").alias("useful_count"),
+        avg("useful").alias("avg_useful"),
+        sum("funny").alias("funny_count"),
+        avg("funny").alias("avg_funny"),
+        avg("stars").alias("avg_stars")
+      )
+      .withColumn("rounded_rating", round(col("avg_stars")).cast("int"))
+      .orderBy(desc("total_reviews"))
 
-  def processTopCategoriesPerRating(spark: SparkSession): Unit = {
-    val businessDF = spark.read
-      .format("jdbc")
-      .options(DB_CONFIG + ("dbtable" -> BUSINESS_TABLE))
-      .load()
-      .select("categories", "avg_stars")
+    val businessStates = allBusiness
+      .join(reviewStats, Seq("business_id"), "inner")
 
+    updateBusinessTable(businessStates)
+    businessStates
+  }
+
+  def processTopCategoriesPerRating(businessDF: DataFrame): Unit = {
     val explodedDF = businessDF
       .withColumn("category", explode(split(col("categories"), ",\\s*")))
       .filter(col("category").isNotNull && length(trim(col("category"))) > 0)
@@ -36,14 +50,7 @@ object BusinessStatsProcessor {
       .save()
   }
 
-  def processBusinessLocationState(sparkSession: SparkSession): Unit = {
-
-    val businessDF = sparkSession.read
-      .format("jdbc")
-      .options(DB_CONFIG + ("dbtable" -> BUSINESS_TABLE))
-      .load()
-      .select("state", "rounded_rating")
-
+  def processBusinessLocationState(businessDF: DataFrame): Unit = {
     val groupedBusiness = businessDF
       .groupBy("state", "rounded_rating")
       .agg(count("*").alias("nbr_business"))
@@ -56,39 +63,8 @@ object BusinessStatsProcessor {
       .save()
   }
 
-  def processBusinessState(spark: SparkSession, allBusiness: DataFrame): Unit = {
-    val reviews = spark.read
-      .format("jdbc")
-      .options(DB_CONFIG + ("dbtable" -> REVIEW_TABLE))
-      .load()
-      .select("business_id", "stars", "useful", "funny", "cool")
 
-    val reviewStats = reviews
-      .groupBy("business_id")
-      .agg(
-        count("*").alias("total_reviews"),
-        sum("useful").alias("useful_count"),
-        avg("useful").alias("avg_useful"),
-        sum("funny").alias("funny_count"),
-        avg("funny").alias("avg_funny"),
-        avg("stars").alias("avg_stars")
-      )
-      .withColumn("rounded_rating", round(col("avg_stars")).cast("int"))
-      .orderBy(desc("total_reviews"))
-
-    val businessStates = allBusiness
-      .join(reviewStats, Seq("business_id"), "inner")
-
-    updateBusinessTable(businessStates)
-  }
-
-  def processRatingByOpenStatus(spark: SparkSession): Unit = {
-    val businessDF = spark.read
-      .format("jdbc")
-      .options(DB_CONFIG + ("dbtable" -> BUSINESS_TABLE))
-      .load()
-      .select("is_open", "rounded_rating")
-
+  def processRatingByOpenStatus(businessDF: DataFrame): Unit = {
     val avgRatingByStatus = businessDF
       .groupBy("is_open")
       .agg(
@@ -103,5 +79,4 @@ object BusinessStatsProcessor {
       .mode("overwrite")
       .save()
   }
-
 }
