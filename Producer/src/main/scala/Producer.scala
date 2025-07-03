@@ -1,8 +1,10 @@
+package com.example
+
 import org.apache.spark.sql.{SparkSession}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions._
 import java.io._
-import Config._
+import com.example.Config._
 
 object Producer {
 
@@ -74,8 +76,20 @@ object Producer {
             .option("kafka.bootstrap.servers", kafkaBootstrap)
             .option("topic", topicName)
             .option("checkpointLocation", s"/tmp/kafka-checkpoint-batch-$i")
+            // Kafka producer timeout configurations
+            .option("kafka.request.timeout.ms", "300000")        // 5 minutes
+            .option("kafka.delivery.timeout.ms", "360000")       // 6 minutes  
+            .option("kafka.max.block.ms", "300000")             // 5 minutes
+            .option("kafka.retries", "3")                        // Retry failed sends
+            .option("kafka.retry.backoff.ms", "1000")           // Wait between retries
+            // Batch size optimizations
+            .option("kafka.batch.size", "32768")                 // 32KB batches
+            .option("kafka.linger.ms", "100")                    // Wait 100ms to batch
+            .option("kafka.buffer.memory", "67108864")           // 64MB buffer
+            // Compression for better throughput
+            .option("kafka.compression.type", "snappy")
             .save()
-
+            
         val writer = new PrintWriter(new File(SAVE_BATCH_STATE_FILE))
         writer.write(i.toString)
         writer.close()

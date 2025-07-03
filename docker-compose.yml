@@ -3,78 +3,107 @@ services:
     image: wurstmeister/zookeeper
     ports:
       - "2181:2181"
+    networks:
+      - mynetwork
 
   kafka:
     image: wurstmeister/kafka
     ports:
       - "9092:9092"
     environment:
-      KAFKA_ADVERTISED_HOST_NAME: localhost
+      KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CREATE_TOPICS: "yelp-topic-review:3:1"
+      # Performance and timeout settings
+      KAFKA_LOG_RETENTION_HOURS: 24
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+      KAFKA_MESSAGE_MAX_BYTES: 10485760
+      KAFKA_REPLICA_FETCH_MAX_BYTES: 10485760
+      KAFKA_GROUP_MAX_SESSION_TIMEOUT_MS: 300000
+      KAFKA_REQUEST_TIMEOUT_MS: 300000
+      # JVM heap settings
+      KAFKA_HEAP_OPTS: "-Xmx1G -Xms1G"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - zookeeper
-    
-  # producer:
-  #   build:
-  #     context: ./Producer
-  #     dockerfile: Dockerfile
-  #   depends_on:
-  #     - kafka
-  #   environment:
-  #     KAFKA_HOST: kafka
-  #     DATASET_PATH: /app/data
-  #   volumes:
-  #     - ${HOST_DTATSET_PATH}:/app/data
-  #   networks:
-  #     - mynetwork
+    networks:
+      - mynetwork
 
-  # postgres:
-  #   image: postgres:15
-  #   environment:
-  #     POSTGRES_USER: ${POSTGRES_USER}
-  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-  #     POSTGRES_DB: ${POSTGRES_DB}
-  #   ports:
-  #     - "5432:5432"
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  #     - ./init:/docker-entrypoint-initdb.d
-  #   networks:
-  #     - mynetwork
+  producer:
+    build:
+      context: ./Producer
+      dockerfile: Dockerfile
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_HOST: "kafka:9092"
+      DATASET_PATH: /app/data/
+    volumes:
+      - /home/adam/Documents/esgi/spark_streaming/spark-streaming-project/yelp_dataset:/app/data/
+    networks:
+      - mynetwork
 
-  # consumer:
-  #   build:
-  #     context: ./consumer
-  #     dockerfile: Dockerfile
-  #   depends_on:
-  #     - producer
-  #     - postgres
-  #   environment:
-  #     DATASET_PATH: /app/data
-  #   volumes:
-  #     - /home/adam/Documents/esgi/spark_streaming/spark-streaming-project/yelp_dataset:/app/data
-  #   networks:
-  #     - mynetwork
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: divinandretomadam
+      POSTGRES_PASSWORD: oDAnmvidrTnmeiAa
+      POSTGRES_DB: spark_streaming_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d
+    networks:
+      - dbNetword
 
-  # streamlit:
-  #   build: ./DataVisualisation
-  #   ports:
-  #     - "8501:8501"
-  #   environment:
-  #     POSTGRES_HOST: postgres
-  #     POSTGRES_USER: ${POSTGRES_USER}
-  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-  #     POSTGRES_DB: ${POSTGRES_DB}
-  #   depends_on:
-  #     - postgres
-  #   networks:
-  #     - mynetwork
+  consumer:
+    build:
+      context: ./Consumer
+      dockerfile: Dockerfile
+    depends_on:
+      - producer
+      - postgres
+    environment:
+      DATASET_PATH: /app/data
+      KAFKA_HOST: "kafka:9092"
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USER: divinandretomadam
+      DATABASE_NAME: spark_streaming_db
+      DATABASE_PASSWORD: oDAnmvidrTnmeiAa
+    volumes:
+      - /home/adam/Documents/esgi/spark_streaming/spark-streaming-project/yelp_dataset:/app/data/
+    networks:
+      - mynetwork
+      - dbNetword
 
-# volumes:
-#   postgres_data:
-#     name: spark_streaming_postgree_data_volume
+  streamlit:
+    build: 
+      context: ./DataVisualisation
+      dockerfile: Dockerfile
+    ports:
+      - "8501:8501"
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USER: divinandretomadam
+      DATABASE_NAME: spark_streaming_db
+      DATABASE_PASSWORD: oDAnmvidrTnmeiAa
+    depends_on:
+      - postgres
+    networks:
+      - dbNetword
 
-# networks:
-#   mynetwork:
+networks:
+  mynetwork:
+    driver: bridge
+  dbNetword:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    name: spark_streaming_postgree_data_volume

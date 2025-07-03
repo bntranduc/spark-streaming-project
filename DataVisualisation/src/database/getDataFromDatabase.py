@@ -6,11 +6,11 @@ import os
 def get_database_connection():
     load_dotenv()
     conn = psycopg2.connect(
-        host=os.getenv("POSTGRES_HOST", "localhost"),
-        port=os.getenv("POSTGRES_PORT", 5432),
-        dbname=os.getenv("DATABASE_NAME"),
-        user=os.getenv("DATABASE_USER"),
-        password=os.getenv("DATABASE_PASSWORD")
+        host=os.getenv("DATABASE_HOST", "localhost"),
+        port=os.getenv("DATABASE_PORT", 5432),
+        dbname=os.getenv("DATABASE_NAME", "spark_streaming_db"),
+        user=os.getenv("DATABASE_USER", "divinandretomadam"),
+        password=os.getenv("DATABASE_PASSWORD", "oDAnmvidrTnmeiAa")
     )
     return conn
 

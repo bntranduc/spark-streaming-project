@@ -1,3 +1,5 @@
+package com.example
+
 import org.apache.spark.sql.types.{StructField, _}
 
 object Config {

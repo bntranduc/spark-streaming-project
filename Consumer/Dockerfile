@@ -1,32 +1,25 @@
-# Étape 1 : Build
-FROM hseeberger/scala-sbt:11.0.19_1.8.2_2.12.15 AS builder
+FROM openjdk:11
+
+# Install Spark
+RUN curl -fsSL https://archive.apache.org/dist/spark/spark-3.5.0/spark-3.5.0-bin-hadoop3.tgz | tar -xz -C /opt && \
+    ln -s /opt/spark-3.5.0-bin-hadoop3 /opt/spark
+
+ENV PATH="/opt/spark/bin:$PATH"
+ENV SPARK_HOME="/opt/spark"
+
+# JVM and Spark configuration for better performance
+ENV JAVA_OPTS="-Xmx2g -Xms1g"
+ENV SPARK_OPTS="--driver-memory 1g --executor-memory 1g --driver-java-options '-Xmx1g -Xms512m'"
 
 WORKDIR /app
+COPY target/scala-2.12/Consumer-assembly-1.0.0.jar /app/
 
-# Copier tout le projet
-COPY . .
-
-# Compiler et créer le JAR
-RUN sbt clean assembly
-
-# Étape 2 : Image finale
-FROM openjdk:11-jre-slim
-
-ENV SPARK_VERSION=3.5.0
-ENV HADOOP_VERSION=3
-ENV SPARK_HOME=/opt/spark
-ENV PATH=$SPARK_HOME/bin:$PATH
-
-# Installer Spark
-RUN apt-get update && apt-get install -y curl && \
-    curl -L https://downloads.apache.org/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz | tar xz && \
-    mv spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION} /opt/spark && \
-    apt-get clean
-
-WORKDIR /app
-
-# Copier le JAR compilé
-COPY --from=builder /app/target/scala-2.12/app.jar .
-
-# Lancer Spark
-CMD ["spark-submit", "--class", "Main", "--master", "local[*]", "app.jar"]
+CMD ["/opt/spark/bin/spark-submit", \
+    "--packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.postgresql:postgresql:42.3.1", \
+    "--class", "com.example.Consumer", \
+    "--driver-memory", "1g", \
+    "--executor-memory", "1g", \
+    "--conf", "spark.sql.adaptive.enabled=true", \
+    "--conf", "spark.sql.adaptive.coalescePartitions.enabled=true", \
+    "--conf", "spark.serializer=org.apache.spark.serializer.KryoSerializer", \
+    "/app/Consumer-assembly-1.0.0.jar"]

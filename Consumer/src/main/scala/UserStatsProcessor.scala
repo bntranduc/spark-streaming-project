@@ -1,3 +1,5 @@
+package com.example
+
 import Config.{DB_CONFIG, REVIEW_TABLE, USER_TABLE}
 import UpdateDatabase.updateUserTable
 import org.apache.spark.sql.{DataFrame, SparkSession, functions}

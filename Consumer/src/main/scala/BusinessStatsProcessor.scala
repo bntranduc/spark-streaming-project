@@ -1,3 +1,5 @@
+package com.example
+
 import Config.{BUSINESS_TABLE, DB_CONFIG, REVIEW_TABLE}
 import UpdateDatabase.{updateBusinessTable, updateUserTable}
 import org.apache.spark.sql.expressions.Window

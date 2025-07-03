@@ -1,3 +1,5 @@
+package com.example
+
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions._
 
@@ -11,7 +13,7 @@ import UpdateDatabase.updateReviewTable
 
 import scala.annotation.tailrec
 
-object Main {
+object Consumer {
 
   def main(args: Array[String]): Unit = {
     val spark = SparkSession.builder()

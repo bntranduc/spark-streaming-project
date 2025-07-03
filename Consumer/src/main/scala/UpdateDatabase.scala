@@ -1,3 +1,5 @@
+package com.example
+
 import Config.{BUSINESS_TABLE, DB_CONFIG, REVIEW_TABLE, TOP_CATEGORIES_TABLE, USER_TABLE}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
