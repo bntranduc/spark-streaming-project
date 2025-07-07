@@ -34,24 +34,31 @@ ou
 ```
 psql -h localhost -p 5432 -U user -d mydatabase
 ```
-
 Copier-coller les instructions dans init/init.sql
 
-## Lancer tout le projet
-docker-compose up --build
-
-## Arrêter
-docker-compose down
-
-## Voir les logs
-docker-compose logs -f
-
 ## Clear le cache
+```
 cd Producer
-sbt clean
+sbt clean assembly
 
 cd ../Consumer
-sbt clean
+sbt clean assembly
+```
+
+## Lancer tout le projet
+```
+docker-compose up --build
+```
+
+## Arrêter l'environnement
+```
+docker-compose down
+```
+
+## Voir les logs
+```
+docker-compose logs -f
+```
 
 docker-compose down --volumes --remove-orphans
 docker system prune -a --volumes
