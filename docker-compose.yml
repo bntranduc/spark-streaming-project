@@ -44,7 +44,7 @@ services:
       KAFKA_HOST: "kafka:9092"
       DATASET_PATH: /app/data/
     volumes:
-      - /home/adam/Documents/esgi/spark_streaming/spark-streaming-project/yelp_dataset:/app/data/
+      - ./yelp_dataset:/app/data/
     networks:
       - mynetwork
 
@@ -80,8 +80,11 @@ services:
       DATABASE_USER: divinandretomadam
       DATABASE_NAME: spark_streaming_db
       DATABASE_PASSWORD: oDAnmvidrTnmeiAa
+      SPARK_DRIVER_MEMORY: 2g
+      SPARK_EXECUTOR_MEMORY: 2g
+      _JAVA_OPTIONS: "-Xms1g -Xmx2g"
     volumes:
-      - /home/adam/Documents/esgi/spark_streaming/spark-streaming-project/yelp_dataset:/app/data/
+      - ./yelp_dataset:/app/data/
     networks:
       - mynetwork
       - dbNetword
@@ -110,6 +113,8 @@ networks:
     driver: bridge
   dbNetword:
     driver: bridge
+  # webNetwork:
+    # driver: bridge
 
 volumes:
   postgres_data:
