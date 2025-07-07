@@ -38,6 +38,8 @@ services:
       dockerfile: Dockerfile
     depends_on:
       - kafka
+    ports:
+      - "4041:4040"
     environment:
       KAFKA_HOST: "kafka:9092"
       DATASET_PATH: /app/data/
@@ -59,6 +61,7 @@ services:
       - ./init:/docker-entrypoint-initdb.d
     networks:
       - dbNetword
+      - webNetwork
 
   consumer:
     build:
@@ -67,6 +70,8 @@ services:
     depends_on:
       - producer
       - postgres
+    ports:
+      - "4040:4040"
     environment:
       DATASET_PATH: /app/data
       KAFKA_HOST: "kafka:9092"
@@ -96,9 +101,11 @@ services:
     depends_on:
       - postgres
     networks:
-      - dbNetword
+      - webNetwork
 
 networks:
+  webNetwork:
+    driver: bridge
   mynetwork:
     driver: bridge
   dbNetword:
