@@ -1,17 +1,30 @@
 package com.example
+import org.apache.spark.sql.expressions.Window
 
 import org.apache.spark.sql.{DataFrame, SparkSession}
+import scala.annotation.tailrec
 import org.apache.spark.sql.functions._
-
 import scala.util.{Failure, Success, Try}
+
 import DataSourceReader.loadOrCreateArtefactSafe
-import ReviewStatsProcessor.{processMonthlyReviewStats, processReviewDistribution, processReviewDistributionByUseful, processWeeklyReviewStats}
-import BusinessStatsProcessor.{processBusinessLocationState, processBusinessState, processRatingByOpenStatus, processTopCategoriesPerRating}
-import Config.{BOOTSTRAP_SERVER, BUSINESS_ARTEFACT_PATH, BUSINESS_JSON_PATH, BUSINESS_SCHEMA, REVIEW_SCHEMA, REVIEW_TOPIC, USER_ARTEFACT_PATH, USER_JSON_PATH, USER_SCHEMA}
-import UserStatsProcessor.{detectInfluentialUsers, detectPolarizedUsers, detectSerialOffenders, processGeneralUsersStats, processUsersSeverityStats, processUsersStates}
+import ReviewStatsProcessor.{
+  processMonthlyReviewStats, processReviewDistribution,
+  processReviewDistributionByUseful, processWeeklyReviewStats
+}
+import BusinessStatsProcessor.{
+  processBusinessLocationState, processBusinessState,
+  processRatingByOpenStatus, processTopCategoriesPerRating
+}
+import Config.{
+  BOOTSTRAP_SERVER,BUSINESS_ARTEFACT_PATH,BUSINESS_JSON_PATH,BUSINESS_SCHEMA,
+  REVIEW_SCHEMA, REVIEW_TOPIC, USER_ARTEFACT_PATH, USER_JSON_PATH, USER_SCHEMA, REVIEW_JSON_PATH, REVIEW_ARTEFACT_PATH
+}
+import UserStatsProcessor.{
+  detectInfluentialUsers,detectPolarizedUsers, detectSerialOffenders,
+  processGeneralUsersStats, processUsersSeverityStats, processUsersStates
+}
 import UpdateDatabase.updateReviewTable
 
-import scala.annotation.tailrec
 
 object Consumer {
 
@@ -43,6 +56,7 @@ object Consumer {
         Seq("business_id", "name", "city", "address" ,"latitude", "longitude","state", "categories", "is_Open"),
       )
 
+      // addArtificialData(spark, businessDF, userDF)
       consumeKafkaTopic(spark, businessDF, userDF)
     } catch {
       case e: java.io.FileNotFoundException =>
@@ -117,6 +131,62 @@ object Consumer {
     }
   }
   
+  def addArtificialData(spark: SparkSession, businessDF: DataFrame, usersDF: DataFrame): Unit = {
+    
+    println(s"In")
+
+    val df = spark.read
+      .format("json")
+      .load(REVIEW_JSON_PATH)
+
+    val windowSpec = Window.orderBy(col("date").asc)
+    val indexedDF = df.select(
+      col("review_id"),
+      col("user_id"),
+      col("business_id"),
+      col("stars"),
+      col("useful"),
+      col("funny"),
+      col("text"),
+      col("cool"),
+      col("date"),
+      row_number().over(windowSpec).alias("id_date")
+    ).limit(50000)  
+
+    val allReviews = updateReviewTable(spark, indexedDF)
+    val allUsers = processUsersStates(allUsersDF = usersDF, df_reviews_db = allReviews)
+    val allBusiness = processBusinessState(spark, businessDF, allReviews)
+
+    println(s"Count")
+
+    
+    // REVIEWS
+    processReviewDistribution(allReviews)
+    processMonthlyReviewStats(allReviews)
+    processWeeklyReviewStats(allReviews)
+    processReviewDistributionByUseful(allReviews)
+
+    println(s"Review")
+
+    // BUSINESS
+    processTopCategoriesPerRating(allBusiness)
+    processBusinessLocationState(allBusiness)
+    processRatingByOpenStatus(allBusiness)
+
+    println(s"Businnes")
+
+    // USER
+    processGeneralUsersStats(allUsers)
+    processUsersSeverityStats(allUsers)
+    detectPolarizedUsers(allUsers)
+    detectInfluentialUsers(allUsers)
+    detectSerialOffenders(allReviews)
+
+    println(s"User")
+
+    println(s"Données ajouté avec succes !")
+  }
+
   @tailrec
   private def tryConnect(spark: SparkSession, attempt: Int, retries: Int, delaySeconds: Int): Option[DataFrame] = {
       println(s"Tentative $attempt/$retries de connexion au topic Kafka...")

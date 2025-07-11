@@ -101,15 +101,12 @@ services:
       - webNetwork
 
 networks:
-  # PRIV
   engnetwork:
     driver: bridge
-    internal: true
+
   dbNetwork:
     driver: bridge
-    internal: true
 
-  # PUB
   webNetwork:
     driver: bridge
 

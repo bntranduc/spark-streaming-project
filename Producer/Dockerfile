@@ -8,7 +8,7 @@ ENV PATH="/opt/spark/bin:$PATH"
 ENV SPARK_HOME="/opt/spark"
 
 RUN mkdir -p /app/tmp && \
-    echo "0" > /app/tmp/kafka_batch_state.txt && \
+    echo "100" > /app/tmp/kafka_batch_state.txt && \
     chmod a+rw /app/tmp/kafka_batch_state.txt  # Ensure writable permissions
 
 # JVM and Spark configuration for better performance

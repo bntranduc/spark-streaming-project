@@ -189,7 +189,7 @@ st.markdown("""
 """)
 with st.spinner("Analyse des avis en cours..."):
     try:
-        review_df = query_db("SELECT text FROM review_table WHERE stars < 3;")
+        review_df = query_db("SELECT text FROM review_table WHERE stars < 2;")
     except Exception as e:
         review_df = None
         st.error("Erreur lors du chargement des avis.")
@@ -205,7 +205,17 @@ else:
             width=800,
             height=400,
             background_color='white',
-            stopwords=STOPWORDS.union({"restaurant", "place", "food"}),
+            stopwords=STOPWORDS.union({
+                'service','because','which', 'other',
+                'what','their', 'said','your', 'been',
+                    "people", "u", "thing", "one", "know", "make", "come", "say", "look", "go",
+    "even", "really", "will", "better", "good", "well", "friend", "nice", "much",
+    "back", "went", "want", "think", "im", "two", "lot", "ok", "said", "ive",
+    "going", "anything", "something", "maybe", "still", "another", "day",
+    "night", "minute"
+                'there', 'place', 'just', 'would', 'like', 'back', 'good', 'about', 'from', 'very', 'here', 'even', 'them',
+                'the', 'and', 'was', 'were', 'had', 'have', 'this', 'that', 'they', 'with', 'for', 'but', 'not', 'are', 'you', 'all', 'can', 'her', 'him', 'his', 'how', 'our', 'out', 'day', 'get', 'use', 'man', 'new', 'now', 'old', 'see', 'two', 'way', 'who', 'its', 'did', 'yes', 'has', 'let', 'put', 'too', 'end', 'why', 'try', 'god', 'six', 'dog', 'eat', 'ago', 'sit', 'fun', 'bad', 'mom', 'son', 'add', 'age', 'due', 'far', 'off', 'own', 'say', 'she', 'may', 'one', 'ask', 'run', 'job', 'lot', 'eye', 'box', 'car', 'oil', 'sit', 'win', 'yet', 'cut', 'let', 'six', 'hot', 'law', 'son', 'run', 'got', 'her', 'him', 'his', 'how', 'man', 'new', 'now', 'old', 'see', 'two', 'way', 'who', 'boy', 'did', 'its', 'let', 'put', 'say', 'she', 'too', 'use',
+                "restaurant", "place", "food"}),
             max_words=100,
             max_font_size=90,
             colormap="inferno",

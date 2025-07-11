@@ -7,6 +7,7 @@ object Config {
   private val DATASET_PATH = sys.env.getOrElse("DATASET_PATH", "../yelp_dataset")
   val BUSINESS_JSON_PATH: String = DATASET_PATH + "/yelp_academic_dataset_business.json"
   val USER_JSON_PATH: String = DATASET_PATH + "/yelp_academic_dataset_user.json"
+  val REVIEW_JSON_PATH: String = DATASET_PATH + "/yelp_academic_dataset_review.json"
 
   // Kafka
   val BOOTSTRAP_SERVER: String = sys.env.getOrElse("KAFKA_HOST", "localhost:9092")
@@ -39,6 +40,7 @@ object Config {
     ))
 
   // Review
+  val REVIEW_ARTEFACT_PATH: String = DATASET_PATH + "/reviews.parquet"
   val REVIEW_TOPIC: String = "yelp-topic-review"
   val REVIEW_SCHEMA: StructType = StructType(
     List(
