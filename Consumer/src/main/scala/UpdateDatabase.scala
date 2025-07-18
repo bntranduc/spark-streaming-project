@@ -31,7 +31,7 @@ object UpdateDatabase {
     val userStats = filteredUsers
       .groupBy("user_id")
       .agg(
-        count("*").alias("total_reviews"),
+        count("*").alias("user_total_reviews"),
         sum("useful").alias("useful_count"),
         avg("useful").alias("avg_useful"),
         sum("funny").alias("funny_count"),
@@ -45,7 +45,7 @@ object UpdateDatabase {
         ).alias("low_ratings_count"),
         expr("sum(CASE WHEN stars <= 2 THEN 1 ELSE 0 END) * 1.0 / count(*)").alias("low_rating_ratio")
       )
-      .orderBy(desc("total_reviews"))
+      .orderBy(desc("user_total_reviews"))
       userStats.write
         .format("jdbc")
         .options(DB_CONFIG + ("dbtable" -> USER_TABLE))
@@ -58,7 +58,7 @@ object UpdateDatabase {
     val reviewStats = reviews
       .groupBy("business_id")
       .agg(
-        count("*").alias("total_reviews"),
+        count("*").alias("business_total_reviews"),
         sum("useful").alias("useful_count"),
         avg("useful").alias("avg_useful"),
         sum("funny").alias("funny_count"),
@@ -66,7 +66,7 @@ object UpdateDatabase {
         avg("stars").alias("avg_stars")
       )
       .withColumn("rounded_rating", round(col("avg_stars")).cast("int"))
-      .orderBy(desc("total_reviews"))
+      .orderBy(desc("business_total_reviews"))
 
     val businessStates = allBusiness
       .join(reviewStats, Seq("business_id"), "inner")
