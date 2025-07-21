@@ -5,7 +5,7 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions._
 
 object UpdateDatabase {
-    def updateReviewTable(spark: SparkSession, batchDF: DataFrame): DataFrame = {
+  def updateReviewTable(spark: SparkSession, batchDF: DataFrame): DataFrame = {
         val df_review_db = spark.read
           .format("jdbc")
           .options(DB_CONFIG + ("dbtable" -> REVIEW_TABLE))
