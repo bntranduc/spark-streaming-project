@@ -1,10 +1,13 @@
+package com.example
+
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.expressions.Window
+import Config.DB_CONFIG
 
-class CompetitiveAnalysis {
+object CompetitiveAnalysis {
     def processBusinessProfiles(spark: SparkSession, businessDF: DataFrame, reviewsDF: DataFrame): DataFrame = {
-        """Profils complets des entreprises pour l'analyse concurrentielle"""
+        // """Profils complets des entreprises pour l'analyse concurrentielle"""
         
         // Statistiques détaillées par entreprise
         val businessStats = reviewsDF
@@ -12,7 +15,7 @@ class CompetitiveAnalysis {
             .agg(
                 count("*").alias("total_reviews"),
                 avg("stars").alias("average_rating"),
-                stddev("stars").alias("rating_stddev"),
+                stddev("stars").alias("rating_stddev"), // l'equart type
                 sum("useful").alias("total_useful"),
                 sum("funny").alias("total_funny"),
                 sum("cool").alias("total_cool"),
@@ -49,9 +52,9 @@ class CompetitiveAnalysis {
             .join(recentStats, Seq("business_id"), "left")
             .join(ratingDistribution, "business_id")
             .withColumn("average_rating", round(col("average_rating"), 2))
-            .withColumn("recent_average", round(coalesce(col("recent_average"), col("average_rating")), 2))
-            .withColumn("rating_stddev", round(coalesce(col("rating_stddev"), lit(0)), 2))
-            .withColumn("recent_reviews", coalesce(col("recent_reviews"), lit(0)))
+            .withColumn("recent_average", round(coalesce(col("recent_average"), col("average_rating")), 2)) // si pas de notes recent mettre la note moyennes
+            .withColumn("rating_stddev", round(coalesce(col("rating_stddev"), lit(0)), 2)) // si pas d'equart type mettre 0
+            .withColumn("recent_reviews", coalesce(col("recent_reviews"), lit(0))) // si pas de review recent mettre 0
             .withColumn("recent_unique_users", coalesce(col("recent_unique_users"), lit(0)))
             .select(
                 "business_id", "name", "address", "city", "state", "categories", "latitude", "longitude", "is_open",
@@ -73,7 +76,7 @@ class CompetitiveAnalysis {
     }
 
     def processCompetitorMappings(spark: SparkSession, businessDF: DataFrame): DataFrame = {
-        """Mappings des concurrents potentiels par entreprise"""
+        // """Mappings des concurrents potentiels par entreprise"""
         
         import spark.implicits._
         
@@ -96,7 +99,7 @@ class CompetitiveAnalysis {
                 (
                     (col("b1.city") === col("b2.city") && col("b1.state") === col("b2.state")) || // Même ville
                     (col("b1.state") === col("b2.state")) // Même état
-                )
+                ) // meme vile ou meme etats
             ).select(
                 col("b1.business_id").alias("target_business_id"),
                 col("b1.name").alias("target_name"),
@@ -132,7 +135,7 @@ class CompetitiveAnalysis {
     }
 
     def processCompetitiveAnalysis(spark: SparkSession, businessProfilesDF: DataFrame, competitorMappingsDF: DataFrame): DataFrame = {
-        """Analyse concurrentielle détaillée"""
+        // """Analyse concurrentielle détaillée"""
         
         // Joindre les profils des entreprises avec leurs concurrents
         val competitiveData = competitorMappingsDF
@@ -170,18 +173,20 @@ class CompetitiveAnalysis {
         
         val competitiveAnalysis = competitiveData
             .withColumn("better_rating_count", 
-                sum(when(col("target_average_rating") > col("competitor_average_rating"), 1).otherwise(0))
-                .over(windowSpecRating))
-            .withColumn("total_competitors_rating", count("*").over(windowSpecRating))
+                sum(
+                    when(col("target_average_rating") > col("competitor_average_rating"), 1).otherwise(0)
+                ).over(windowSpecRating)) // combien de concurrents ont une note inférieure
+            .withColumn("total_competitors_rating", count("*").over(windowSpecRating)) // combien de concurrents
             .withColumn("better_popularity_count", 
-                sum(when(col("target_total_reviews") > col("competitor_total_reviews"), 1).otherwise(0))
-                .over(windowSpecPopularity))
+                sum(
+                    when(col("target_total_reviews") > col("competitor_total_reviews"), 1).otherwise(0)
+                ).over(windowSpecPopularity))
             .withColumn("total_competitors_popularity", count("*").over(windowSpecPopularity))
-            .withColumn("rating_percentile", 
+            .withColumn("rating_percentile",  // si 90 L’entreprise est mieux notée que 90 % de ses concurrents.
                 round((col("better_rating_count").cast("double") / col("total_competitors_rating")) * 100, 1))
-            .withColumn("popularity_percentile", 
+            .withColumn("popularity_percentile", // Si 90 l’entreprise est plus populaire (en termes de nombre d’avis) que 90 % de ses concurrents.
                 round((col("better_popularity_count").cast("double") / col("total_competitors_popularity")) * 100, 1))
-            .withColumn("avg_percentile", 
+            .withColumn("avg_percentile", // Très bien noté et très populaire ?
                 round((col("rating_percentile") + col("popularity_percentile")) / 2, 1))
             .withColumn("market_position",
                 when(col("avg_percentile") >= 80, "Leader du marché")
@@ -201,7 +206,7 @@ class CompetitiveAnalysis {
     }
 
     def processMarketPositioning(spark: SparkSession, competitiveAnalysisDF: DataFrame): DataFrame = {
-        """Calcul du positionnement sur le marché par entreprise"""
+        // """Calcul du positionnement sur le marché par entreprise"""
         
         val marketPositioning = competitiveAnalysisDF
             .groupBy(
@@ -213,12 +218,12 @@ class CompetitiveAnalysis {
                 first("popularity_percentile").alias("popularity_percentile"),
                 first("avg_percentile").alias("avg_percentile"),
                 first("market_position").alias("market_position"),
-                count("*").alias("total_competitors"),
+                count("*").alias("total_competitors"), // Nombre total de concurrents
                 sum(when(col("is_same_city"), 1).otherwise(0)).alias("same_city_competitors"),
-                max("competitor_average_rating").alias("best_competitor_rating"),
-                max("competitor_total_reviews").alias("most_popular_competitor_reviews"),
-                avg("competitor_average_rating").alias("avg_competitor_rating"),
-                avg("competitor_total_reviews").alias("avg_competitor_reviews")
+                max("competitor_average_rating").alias("best_competitor_rating"), // Concurrents les plus performants
+                max("competitor_total_reviews").alias("most_popular_competitor_reviews"), // Note moyenne du meilleur concurrent
+                avg("competitor_average_rating").alias("avg_competitor_rating"), // Nombre d'avis du concurrent le plus populaire.
+                avg("competitor_total_reviews").alias("avg_competitor_reviews") // Moyenne des concurrents
             )
             .withColumn("avg_competitor_rating", round(col("avg_competitor_rating"), 2))
             .withColumn("avg_competitor_reviews", round(col("avg_competitor_reviews"), 0))
@@ -226,21 +231,21 @@ class CompetitiveAnalysis {
         // Identifier les forces et faiblesses
         val positioningWithInsights = marketPositioning
             .withColumn("strengths", 
-            concat_ws(", ",
-                when(col("rating_percentile") >= 70, lit("Excellence des notes")).otherwise(lit("")),
-                when(col("popularity_percentile") >= 70, lit("Forte popularité")).otherwise(lit("")),
-                when(col("same_city_competitors") < 5, lit("Faible concurrence locale")).otherwise(lit(""))
-            )
+                concat_ws(", ",
+                    when(col("rating_percentile") >= 70, lit("Excellence des notes")).otherwise(lit("")),
+                    when(col("popularity_percentile") >= 70, lit("Forte popularité")).otherwise(lit("")),
+                    when(col("same_city_competitors") < 5, lit("Faible concurrence locale")).otherwise(lit(""))
+                )
             )
             .withColumn("weaknesses",
                 concat_ws(", ",
-                when(col("rating_percentile") <= 30, lit("Notes inférieures à la moyenne")).otherwise(lit("")),
-                when(col("popularity_percentile") <= 30, lit("Faible visibilité")).otherwise(lit("")),
-                when(col("same_city_competitors") > 20, lit("Forte concurrence locale")).otherwise(lit(""))
+                    when(col("rating_percentile") <= 30, lit("Notes inférieures à la moyenne")).otherwise(lit("")),
+                    when(col("popularity_percentile") <= 30, lit("Faible visibilité")).otherwise(lit("")),
+                    when(col("same_city_competitors") > 20, lit("Forte concurrence locale")).otherwise(lit(""))
+                )
             )
-            )
-            .withColumn("strengths", regexp_replace(col("strengths"), "^, |, $", ""))
-            .withColumn("weaknesses", regexp_replace(col("weaknesses"), "^, |, $", ""))
+            .withColumn("strengths", regexp_replace(col("strengths"), "^, |, $", "")) // "^," supprime une virgule + espace au début de la chaîne.
+            .withColumn("weaknesses", regexp_replace(col("weaknesses"), "^, |, $", "")) // ", $" supprime une virgule + espace à la fin de la chaîne.
         
         // Sauvegarde en base
         positioningWithInsights.write
@@ -253,7 +258,7 @@ class CompetitiveAnalysis {
     }
 
     def processDetailedComparisons(spark: SparkSession, competitiveAnalysisDF: DataFrame): DataFrame = {
-        """Comparaisons détaillées avec les top concurrents"""
+        // """Comparaisons détaillées avec les top concurrents"""
         
         // Sélectionner les 10 meilleurs concurrents par entreprise cible
         val windowSpec = Window.partitionBy("target_business_id")
@@ -282,7 +287,7 @@ class CompetitiveAnalysis {
     }
 
     def processMarketShare(spark: SparkSession, competitiveAnalysisDF: DataFrame): DataFrame = {
-        """Calcul des parts de marché par zone géographique et catégorie"""
+        // """Calcul des parts de marché par zone géographique et catégorie"""
         
         // Parts de marché basées sur le volume d'avis
         val marketShareData = competitiveAnalysisDF
@@ -326,11 +331,11 @@ class CompetitiveAnalysis {
     }
 
     def processCompetitiveInsights(spark: SparkSession, marketPositioningDF: DataFrame): DataFrame = {
-    """Génération d'insights concurrentiels automatiques"""
+    // """Génération d'insights concurrentiels automatiques"""
     
     val competitiveInsights = marketPositioningDF
         .withColumn("primary_insight",
-            when(col("rating_percentile") >= 70 && col("popularity_percentile") >= 70, 
+            when(col("rating_percentile") >= 70 && col("popularity_percentile") >= 70, // L'entreprise est mieux notée que 70% de ses concurrents. et L’entreprise est populaire (70% des concurrents ont moins d’avis).
                 "Leader du marché avec excellence sur tous les fronts")
             .when(col("rating_percentile") >= 70 && col("popularity_percentile") < 50, 
                 "Excellente qualité mais manque de visibilité")
@@ -343,7 +348,7 @@ class CompetitiveAnalysis {
             .otherwise("Position à consolider")
         )
         .withColumn("recommended_action",
-            when(col("rating_percentile") < 50, 
+            when(col("rating_percentile") < 50, // si L'entreprise est moins bien notée que la moitié de ses concurrents
                 "Priorité: Améliorer la satisfaction client et la qualité du service")
             .when(col("popularity_percentile") < 50, 
                 "Priorité: Augmenter la visibilité et encourager les avis clients")
@@ -351,7 +356,7 @@ class CompetitiveAnalysis {
                 "Opportunité: Dominer le marché local")
             .otherwise("Maintenir les standards et surveiller la concurrence")
         )
-        .withColumn("competitive_advantage",
+        .withColumn("competitive_advantage", // La moyenne de l’entreprise est d’au moins 0,5 point supperieur à la moyenne de ses concurrents
             when(col("target_average_rating") > col("avg_competitor_rating") + 0.5, 
                 "Avantage qualité significatif")
             .when(col("target_total_reviews") > col("avg_competitor_reviews") * 2, 
@@ -372,8 +377,22 @@ class CompetitiveAnalysis {
     }
 
     def processAllCompetitiveAnalytics(spark: SparkSession, businessDF: DataFrame, reviewsDF: DataFrame): Unit = {
-        """Traite toutes les analyses concurrentielles et les sauvegarde en base"""
+        // """Traite toutes les analyses concurrentielles et les sauvegarde en base"""
         
+        // Filtrer pour les entreprises avec un minimum d'activité
+        val activeBusinessIds = reviewsDF
+            .groupBy("business_id")
+            .agg(count("*").alias("review_count"))
+            .filter(col("review_count") >= 5) // Au moins 5 avis
+            .select("business_id")
+            
+        val filteredBusiness = businessDF
+            .join(activeBusinessIds, "business_id")
+            .filter(col("categories").isNotNull) // Avoir des catégories pour l'analyse
+            
+        val filteredReviews = reviewsDF
+            .join(activeBusinessIds, "business_id")
+
         println(">>>>>>>>>>>>>>>>>>>>>>> Traitement des analyses concurrentielles <<<<<<<<<<<<<<<<<<<<<<<<")
         
         // 1. Profils d'entreprises détaillés
@@ -407,24 +426,4 @@ class CompetitiveAnalysis {
         println(" ================ Toutes les analyses concurrentielles terminées et sauvegardées! ================")
     }
 
-    def integrateCompetitiveAnalysis(spark: SparkSession, businessDF: DataFrame, reviewsDF: DataFrame): Unit = {
-        """Intégration dans votre pipeline existant"""
-        
-        // Filtrer pour les entreprises avec un minimum d'activité
-        val activeBusinessIds = reviewsDF
-            .groupBy("business_id")
-            .agg(count("*").alias("review_count"))
-            .filter(col("review_count") >= 5) // Au moins 5 avis
-            .select("business_id")
-            
-        val filteredBusiness = businessDF
-            .join(activeBusinessIds, "business_id")
-            .filter(col("categories").isNotNull) // Avoir des catégories pour l'analyse
-            
-        val filteredReviews = reviewsDF
-            .join(activeBusinessIds, "business_id")
-        
-        // Traitement des analyses concurrentielles
-        processAllCompetitiveAnalytics(spark, filteredBusiness, filteredReviews)
-    }
 }

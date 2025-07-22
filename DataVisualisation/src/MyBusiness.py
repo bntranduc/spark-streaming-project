@@ -10,6 +10,9 @@ import json
 import psycopg2
 import os
 from sqlalchemy import create_engine
+import matplotlib.pyplot as plt
+import re
+from wordcloud import WordCloud, STOPWORDS
 
 # ================== CONFIGURATION DATABASE ==================
 DB_CONFIG = {
@@ -34,6 +37,10 @@ def get_db_connection():
 class YelpDatabaseData:
     def __init__(self):
         self.engine = get_db_connection()
+        self.business_count = None
+        self.review_count = None
+        self.user_count = None
+        
         self.business_overview = None
         self.rating_distribution = None
         self.temporal_analysis = None
@@ -49,7 +56,12 @@ class YelpDatabaseData:
             
         try:
             # Chargement de toutes les tables
-            self.business_overview = pd.read_sql("SELECT * FROM business_overview", self.engine)
+            
+            self.business_count = pd.read_sql("SELECT COUNT(*) as count FROM business_table", self.engine).iloc[0]['count']
+            self.review_count = pd.read_sql("SELECT COUNT(*) as count FROM review_table", self.engine).iloc[0]['count']
+            self.user_count = pd.read_sql("SELECT COUNT(*) as count FROM user_table", self.engine).iloc[0]['count']
+
+            self.business_overview = pd.read_sql("SELECT * FROM business_overview ORDER BY total_reviews DESC", self.engine)
             self.rating_distribution = pd.read_sql("SELECT * FROM rating_distribution", self.engine)
             self.temporal_analysis = pd.read_sql("SELECT * FROM temporal_analysis", self.engine)
             self.trend_analysis = pd.read_sql("SELECT * FROM trend_analysis", self.engine)
@@ -70,6 +82,46 @@ class YelpDatabaseData:
         businesses['display_name'] = businesses['name'] + ' (' + businesses['city'] + ', ' + businesses['state'] + ')'
         
         return businesses.to_dict('records')
+
+    def get_review_texts(self, business_id: str) -> pd.DataFrame:
+        """Récupère les textes des avis pour une entreprise donnée"""
+        if self.engine is None:
+            return pd.DataFrame()
+        
+        # Méthode 1: F-string simple (plus sûre)
+        try:
+            # Échapper les apostrophes potentielles dans business_id
+            safe_business_id = business_id.replace("'", "''")
+            query = f"SELECT text FROM review_table WHERE business_id = '{safe_business_id}' AND text IS NOT NULL AND text != ''"
+            review_df = pd.read_sql(query, self.engine)
+            return review_df
+        except Exception as e1:
+            st.warning(f"Méthode 1 échouée: {e1}")
+            
+            # Méthode 2: Connexion directe avec paramètres nommés
+            try:
+                with self.engine.connect() as conn:
+                    query = "SELECT text FROM review_table WHERE business_id = %(business_id)s AND text IS NOT NULL AND text != ''"
+                    review_df = pd.read_sql(query, conn, params={'business_id': business_id})
+                    return review_df
+            except Exception as e2:
+                st.warning(f"Méthode 2 échouée: {e2}")
+                
+                # Méthode 3: Utilisation de psycopg2 directement
+                try:
+                    import psycopg2
+                    connection_string = f"postgresql://{DB_CONFIG['user']}:{DB_CONFIG['password']}@{DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['dbname']}"
+                    conn = psycopg2.connect(connection_string)
+                    
+                    query = "SELECT text FROM review_table WHERE business_id = %s AND text IS NOT NULL AND text != ''"
+                    review_df = pd.read_sql(query, conn, params=(business_id,))
+                    conn.close()
+                    return review_df
+                except Exception as e3:
+                    st.error(f"Toutes les méthodes ont échoué. Dernière erreur: {e3}")
+                    return pd.DataFrame()
+
+            return pd.DataFrame()
 
 # ================== COUCHE DE TRANSFORMATION ==================
 class YelpDatabaseAnalyzer:
@@ -222,6 +274,62 @@ class YelpDatabaseAnalyzer:
             'top_reviewers': top_reviewers
         }
 
+    def generate_wordcloud(self, business_id: str) -> plt.Figure:
+        """Génère un nuage de mots à partir des avis d'une entreprise"""
+        try:
+            # Récupérer les textes des avis
+            review_df = self.data.get_review_texts(business_id)
+            
+            if review_df is None or review_df.empty:
+                return None
+            
+            # Combiner tous les textes
+            all_text = " ".join(review_df['text'].dropna().astype(str).tolist())
+            
+            if not all_text.strip():
+                return None
+            
+            # Nettoyer le texte
+            all_text = all_text.lower()
+            all_text = re.sub(r"[^a-zA-ZÀ-ÿ\s]", " ", all_text)
+            all_text = re.sub(r"\s+", " ", all_text).strip()
+            
+            if len(all_text) < 10:  # Texte trop court
+                return None
+            
+            # Créer le nuage de mots
+            custom_stopwords = STOPWORDS.union({
+                "restaurant", "place", "food", "eat", "go", "get", "really", 
+                "good", "great", "nice", "time", "back", "come", "went", 
+                "one", "two", "would", "could", "also", "much", "well",
+                "like", "love", "want", "need", "think", "know", "see",
+                "make", "take", "give", "way", "say", "come", "go"
+            })
+            
+            wordcloud = WordCloud(
+                width=800,
+                height=400,
+                background_color='white',
+                stopwords=custom_stopwords,
+                max_words=100,
+                max_font_size=90,
+                colormap="viridis",
+                random_state=42,
+                collocations=False
+            ).generate(all_text)
+            
+            # Créer la figure matplotlib
+            fig, ax = plt.subplots(figsize=(12, 6))
+            ax.imshow(wordcloud, interpolation='bilinear')
+            ax.axis('off')
+            ax.set_title("Nuage de mots des avis", fontsize=16, pad=20)
+            
+            return fig
+            
+        except Exception as e:
+            st.error(f"Erreur lors de la génération du nuage de mots: {e}")
+            return None
+
 # ================== COUCHE DE VISUALISATION ==================
 class YelpDatabaseVisualizer:
     def __init__(self, analyzer: YelpDatabaseAnalyzer):
@@ -334,14 +442,12 @@ def main():
             
             data = st.session_state.yelp_db_data
             
-            if data.business_overview is not None:
-                st.info(f"📈 {len(data.business_overview)} entreprises")
-            if data.rating_distribution is not None:
-                st.info(f"⭐ {len(data.rating_distribution)} distributions de notes")
-            if data.temporal_analysis is not None:
-                st.info(f"📅 {len(data.temporal_analysis)} analyses temporelles")
-            if data.trend_analysis is not None:
-                st.info(f"📈 {len(data.trend_analysis)} analyses de tendances")
+            if data.business_count is not None:
+                st.info(f"📈 {data.business_count} entreprises")
+            if data.review_count is not None:
+                st.info(f"💬 {data.review_count} avis")
+            if data.user_count is not None:
+                st.info(f"👥 {data.user_count} utilisateurs")
         
         st.markdown("---")
         st.text("🔗 Base: PostgreSQL")
@@ -412,7 +518,7 @@ def main():
                 st.markdown("---")
                 st.header("📊 Analyses détaillées")
                 
-                tab1, tab2, tab3 = st.tabs(["Distribution des notes", "Évolution temporelle", "Tendances"])
+                tab1, tab2, tab3, tab4 = st.tabs(["Distribution des notes", "Évolution temporelle", "Tendances", "Nuage de mots"])
                 
                 with tab1:
                     chart = visualizer.create_rating_distribution_chart(selected_id)
@@ -466,6 +572,19 @@ def main():
                     else:
                         st.warning("Aucune analyse de tendance disponible")
                 
+                with tab4:
+                    # Nuage de mots des avis
+                    st.subheader("☁️ Nuage de mots des avis")
+                    
+                    with st.spinner("Génération du nuage de mots..."):
+                        wordcloud_fig = analyzer.generate_wordcloud(selected_id)
+                        
+                        if wordcloud_fig:
+                            st.pyplot(wordcloud_fig)
+                            st.info("Ce nuage de mots représente les mots les plus fréquents dans les avis de cette entreprise.")
+                        else:
+                            st.warning("Aucun texte d'avis disponible pour générer le nuage de mots.")
+
                 # Analyse des utilisateurs
                 st.markdown("---")
                 st.header("👥 Analyse des utilisateurs")
@@ -491,6 +610,7 @@ def main():
                         st.dataframe(df_reviewers, use_container_width=True)
                 else:
                     st.warning("Aucune donnée utilisateur disponible")
+
         else:
             st.warning("Aucune entreprise trouvée dans la base de données")
     

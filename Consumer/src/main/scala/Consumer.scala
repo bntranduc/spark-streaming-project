@@ -1,30 +1,31 @@
 package com.example
-
 import org.apache.spark.sql.expressions.Window
+
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import scala.annotation.tailrec
 import org.apache.spark.sql.functions._
 import scala.util.{Failure, Success, Try}
-import Config.{BUSINESS_TABLE, DB_CONFIG, REVIEW_TABLE, TOP_CATEGORIES_TABLE, USER_TABLE}
+import Config.{BUSINESS_TABLE, DB_CONFIG, REVIEW_TABLE, USER_TABLE}
 import org.apache.spark.sql.functions._
 
 import DataSourceReader.loadOrCreateArtefactSafe
+
 import Config.{
   BOOTSTRAP_SERVER,BUSINESS_ARTEFACT_PATH,BUSINESS_JSON_PATH,BUSINESS_SCHEMA,
   REVIEW_SCHEMA, REVIEW_TOPIC, USER_ARTEFACT_PATH, USER_JSON_PATH, USER_SCHEMA, REVIEW_JSON_PATH, REVIEW_ARTEFACT_PATH
 }
+
 import UpdateDatabase.{
   updateReviewTable,
-  processBusinessState,
-  processUsersStates
+  updateUserTable,
+  updateBusinessTable
 }
 
-import MyBusiness._
-import CompetitiveAnalysis._
-import MarketAnalysis._
+import  BusinessAnalytics.processAllBusinessAnalytics
+import  CompetitiveAnalysis.processAllCompetitiveAnalytics
 
-object Consumer {  
-  
+object Consumer {
+
   def main(args: Array[String]): Unit = {
     val spark = SparkSession.builder()
       .appName("Consumer")
@@ -80,7 +81,7 @@ object Consumer {
 
   private def consumeKafkaTopic(spark: SparkSession, businessDF: DataFrame, usersDF: DataFrame): Unit = {
 
-    val maybeKafkaDF = tryConnect(spark, attempt=1, retries=5, delaySeconds=5)
+    val maybeKafkaDF = tryConnect(spark, attempt=1, retries=15, delaySeconds=5)
 
     maybeKafkaDF match {
       case Some(kafkaStreamDF) =>
@@ -92,20 +93,22 @@ object Consumer {
           
           parsedMessages.writeStream
             .foreachBatch { (newBatch: DataFrame, batchId: Long) =>
+              if (!newBatch.isEmpty) {
+                val allReviews = updateReviewTable(spark, newBatch)
 
-              val allReviews = updateReviewTable(spark, newBatch)
-              val allUsers = processUsersStates(allUsersDF = usersDF, df_reviews_db = allReviews)
-              val allBusiness = processBusinessState(spark, businessDF, allReviews)
+                val activeBusinessIds = allReviews.select("business_id").distinct()
+                val activeUserIds = allReviews.select("user_id").distinct()
+                val filteredBusiness = businessDF.join(activeBusinessIds, "business_id")
+                val filteredUsers = usersDF.join(activeUserIds, "user_id")
 
-              integrateMyBusinessAnalysis(spark, businessDF, usersDF, allReviews)
-              
-              // 🆕 ANALYSES DE MARCHÉ
-              integrateMarketAnalysis(spark, businessDF, allReviews)
-              
-              // 🆕 ANALYSES CONCURRENTIELLES
-              integrateCompetitiveAnalysis(spark, businessDF, allReviews)
-              
-              println(s"Batch $batchId traité et statistiques insérées.")
+                val allUsers = updateUserTable(filteredUsers)
+                val allBusiness = updateBusinessTable(filteredBusiness)
+
+                processAllBusinessAnalytics(spark, filteredBusiness, filteredUsers, allReviews)
+                processAllCompetitiveAnalytics(spark, filteredBusiness, allReviews)
+
+                println(s"Batch $batchId traité et statistiques insérées.")
+              }
             }
             .outputMode("append")
             .start()
