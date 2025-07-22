@@ -34,6 +34,10 @@ def get_db_connection():
 class YelpDatabaseData:
     def __init__(self):
         self.engine = get_db_connection()
+        self.business_count = None
+        self.review_count = None
+        self.user_count = None
+        
         self.business_overview = None
         self.rating_distribution = None
         self.temporal_analysis = None
@@ -49,7 +53,12 @@ class YelpDatabaseData:
             
         try:
             # Chargement de toutes les tables
-            self.business_overview = pd.read_sql("SELECT * FROM business_overview", self.engine)
+            
+            self.business_count = pd.read_sql("SELECT COUNT(*) as count FROM business_table", self.engine).iloc[0]['count']
+            self.review_count = pd.read_sql("SELECT COUNT(*) as count FROM review_table", self.engine).iloc[0]['count']
+            self.user_count = pd.read_sql("SELECT COUNT(*) as count FROM user_table", self.engine).iloc[0]['count']
+
+            self.business_overview = pd.read_sql("SELECT * FROM business_overview ORDER BY total_reviews DESC", self.engine)
             self.rating_distribution = pd.read_sql("SELECT * FROM rating_distribution", self.engine)
             self.temporal_analysis = pd.read_sql("SELECT * FROM temporal_analysis", self.engine)
             self.trend_analysis = pd.read_sql("SELECT * FROM trend_analysis", self.engine)
@@ -334,14 +343,12 @@ def main():
             
             data = st.session_state.yelp_db_data
             
-            if data.business_overview is not None:
-                st.info(f"📈 {len(data.business_overview)} entreprises")
-            if data.rating_distribution is not None:
-                st.info(f"⭐ {len(data.rating_distribution)} distributions de notes")
-            if data.temporal_analysis is not None:
-                st.info(f"📅 {len(data.temporal_analysis)} analyses temporelles")
-            if data.trend_analysis is not None:
-                st.info(f"📈 {len(data.trend_analysis)} analyses de tendances")
+            if data.business_count is not None:
+                st.info(f"📈 {data.business_count} entreprises")
+            if data.review_count is not None:
+                st.info(f"💬 {data.review_count} avis")
+            if data.user_count is not None:
+                st.info(f"👥 {data.user_count} utilisateurs")
         
         st.markdown("---")
         st.text("🔗 Base: PostgreSQL")

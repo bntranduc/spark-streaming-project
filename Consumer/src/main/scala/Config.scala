@@ -68,16 +68,12 @@ object Config {
   ))
 
   // REVIEWS
-  val REVIEW_TABLE: String = "review_table"
   val REVIEW_DISTRIBUTION_TABLE: String = "review_distribution_table"
   val SEASONAL_REVIEW_STARS_TABLE= "seasonal_review_stats"
   val WEAKLY_REVIEW_STARS = "weekly_review_stats"
   val REVIEW_DISTRIBUTION_BY_USEFUL_TABLE = "review_distribution_useful"
 
-  // BUSINESS
+  val REVIEW_TABLE: String = "review_table"
   val BUSINESS_TABLE: String = "business_table"
-  val TOP_CATEGORIES_TABLE: String = "top_categories_table"
-
-  // USER
   val USER_TABLE: String = "user_table"
 }
