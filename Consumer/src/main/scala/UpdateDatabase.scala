@@ -22,6 +22,7 @@ object UpdateDatabase {
           .save()
 
         df_review_db.union(new_reviews)
+        df_review_db
   }
 
   def updateUserTable(filteredUsers: DataFrame): Unit = {

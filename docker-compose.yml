@@ -39,6 +39,10 @@ services:
     environment:
       KAFKA_HOST: "kafka:9092"
       DATASET_PATH: /app/data/
+      SPARK_DRIVER_MEMORY: 2g
+      SPARK_EXECUTOR_MEMORY: 2g
+      _JAVA_OPTIONS: "-Xms1g -Xmx4g"
+    
     volumes:
       - ./yelp_dataset:/app/data/
     networks:
@@ -76,7 +80,7 @@ services:
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
       SPARK_DRIVER_MEMORY: 2g
       SPARK_EXECUTOR_MEMORY: 2g
-      _JAVA_OPTIONS: "-Xms1g -Xmx2g"
+      _JAVA_OPTIONS: "-Xms1g -Xmx4g"
     volumes:
       - ./yelp_dataset:/app/data/
     networks:

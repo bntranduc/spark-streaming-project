@@ -10,6 +10,9 @@ import json
 import psycopg2
 import os
 from sqlalchemy import create_engine
+import matplotlib.pyplot as plt
+import re
+from wordcloud import WordCloud, STOPWORDS
 
 # ================== CONFIGURATION DATABASE ==================
 DB_CONFIG = {
@@ -30,10 +33,14 @@ def get_db_connection():
         st.error(f"Erreur de connexion à la base de données: {e}")
         return None
 
-# ================== COUCHE DE DONNÉES ==================
-class YelpMarketDatabaseData:
+# ================== COUCHE DE DONNÉES (LECTURE SEULE) ==================
+class YelpMarketData:
+    """Classe pour lire les données d'analyse de marché traitées par Spark"""
+    
     def __init__(self):
         self.engine = get_db_connection()
+        
+        # Tables d'analyse de marché créées par Spark
         self.market_locations = None
         self.market_categories = None
         self.market_overview = None
@@ -43,398 +50,236 @@ class YelpMarketDatabaseData:
         self.market_opportunities = None
         self.market_rating_distribution = None
         
+        # Tables d'analyse business existantes
+        self.business_overview = None
+        self.rating_distribution = None
+        self.temporal_analysis = None
+        self.trend_analysis = None
+        self.business_user_stats = None
+        self.top_reviewers = None
+        
     def load_all_data(self):
-        """Charge toutes les données depuis la base PostgreSQL"""
+        """Charge toutes les données depuis PostgreSQL (tables créées par Spark)"""
         if self.engine is None:
             st.error("Impossible de se connecter à la base de données")
             return False
             
         try:
-            # Chargement de toutes les tables d'analyse de marché
-            self.market_locations = pd.read_sql("SELECT * FROM market_locations", self.engine)
-            self.market_categories = pd.read_sql("SELECT * FROM market_categories", self.engine)
-            self.market_overview = pd.read_sql("SELECT * FROM market_overview", self.engine)
-            self.market_segments = pd.read_sql("SELECT * FROM market_segments", self.engine)
-            self.market_quarterly_trends = pd.read_sql("SELECT * FROM market_quarterly_trends", self.engine)
-            self.market_trends_summary = pd.read_sql("SELECT * FROM market_trends_summary", self.engine)
-            self.market_opportunities = pd.read_sql("SELECT * FROM market_opportunities", self.engine)
-            self.market_rating_distribution = pd.read_sql("SELECT * FROM market_rating_distribution", self.engine)
+            # Tables d'analyse de marché (créées par Spark Scala)
+            self.market_locations = pd.read_sql("SELECT * FROM market_locations ORDER BY business_count DESC", self.engine)
+            self.market_categories = pd.read_sql("SELECT * FROM market_categories ORDER BY opportunity_score DESC", self.engine)
+            self.market_overview = pd.read_sql("SELECT * FROM market_overview ORDER BY total_businesses DESC", self.engine)
+            self.market_segments = pd.read_sql("SELECT * FROM market_segments ORDER BY opportunity_score DESC", self.engine)
+            self.market_quarterly_trends = pd.read_sql("SELECT * FROM market_quarterly_trends ORDER BY location_key, quarter", self.engine)
+            self.market_trends_summary = pd.read_sql("SELECT * FROM market_trends_summary ORDER BY rating_trend DESC", self.engine)
+            self.market_opportunities = pd.read_sql("SELECT * FROM market_opportunities ORDER BY opportunity_score DESC", self.engine)
+            self.market_rating_distribution = pd.read_sql("SELECT * FROM market_rating_distribution ORDER BY location_key, rating", self.engine)
+            
+            # Tables d'analyse business existantes
+            self.business_overview = pd.read_sql("SELECT * FROM business_overview ORDER BY total_reviews DESC", self.engine)
+            self.rating_distribution = pd.read_sql("SELECT * FROM rating_distribution", self.engine)
+            self.temporal_analysis = pd.read_sql("SELECT * FROM temporal_analysis", self.engine)
+            self.trend_analysis = pd.read_sql("SELECT * FROM trend_analysis", self.engine)
+            self.business_user_stats = pd.read_sql("SELECT * FROM business_user_stats", self.engine)
+            self.top_reviewers = pd.read_sql("SELECT * FROM top_reviewers", self.engine)
             
             return True
         except Exception as e:
             st.error(f"Erreur lors du chargement des données: {e}")
+            st.error("Assurez-vous que le traitement Spark Scala a été exécuté et que toutes les tables sont créées.")
             return False
     
-    def get_available_locations(self) -> List[Dict]:
-        """Retourne les localisations disponibles"""
+    def get_market_locations_list(self) -> List[Dict]:
+        """Retourne la liste des localisations de marché"""
         if self.market_locations is None or self.market_locations.empty:
             return []
-        
-        return self.market_locations.sort_values('business_count', ascending=False).to_dict('records')
+        return self.market_locations.to_dict('records')
     
-    def get_available_categories(self) -> List[str]:
-        """Retourne les catégories disponibles"""
-        if self.market_categories is None or self.market_categories.empty:
+    def get_business_list(self) -> List[Dict]:
+        """Retourne la liste des entreprises"""
+        if self.business_overview is None or self.business_overview.empty:
             return []
-        
-        return sorted(self.market_categories['category'].tolist())
-
-# ================== COUCHE D'ANALYSE DE MARCHÉ ==================
-class MarketDatabaseAnalyzer:
-    def __init__(self, data: YelpMarketDatabaseData):
-        self.data = data
-        
-    def analyze_market_overview(self, location: str = None, category: str = None) -> Dict:
-        """Analyse générale du marché depuis la base"""
-        if self.data.market_overview is None:
-            return {'error': 'Aucune donnée de vue d\'ensemble disponible'}
-        
-        # Filtrer par localisation
-        if location and location != 'Toutes les villes':
-            overview_data = self.data.market_overview[
-                self.data.market_overview['location_key'] == location
-            ]
-        else:
-            # Agrégation globale
-            overview_data = self.data.market_overview.agg({
-                'total_businesses': 'sum',
-                'active_businesses': 'sum',
-                'total_reviews': 'sum',
-                'avg_market_rating': 'mean',
-                'recently_active_businesses': 'sum'
-            }).to_frame().T
-            overview_data['activity_rate'] = (overview_data['recently_active_businesses'] / overview_data['total_businesses'] * 100).iloc[0]
-            overview_data['market_health'] = self._calculate_market_health(
-                overview_data['avg_market_rating'].iloc[0],
-                overview_data['activity_rate']
-            )
-        
-        if overview_data.empty:
-            return {'error': 'Aucune donnée trouvée pour cette localisation'}
-        
-        overview = overview_data.iloc[0]
-        
-        # Distribution des notes pour cette localisation
-        rating_distribution = self._get_rating_distribution(location)
-        
-        # Tendances mensuelles pour cette localisation
-        monthly_trends = self._get_monthly_trends(location, category)
-        
-        return {
-            'total_businesses': int(overview.get('total_businesses', 0)),
-            'active_businesses': int(overview.get('active_businesses', 0)),
-            'total_reviews': int(overview.get('total_reviews', 0)),
-            'avg_market_rating': round(float(overview.get('avg_market_rating', 0)), 2),
-            'rating_distribution': rating_distribution,
-            'monthly_trends': monthly_trends,
-            'market_health': overview.get('market_health', 'Inconnu')
-        }
-    
-    def _calculate_market_health(self, avg_rating: float, activity_rate: float) -> str:
-        """Calcule la santé du marché"""
-        if avg_rating >= 4.0 and activity_rate >= 60:
-            return 'Excellent'
-        elif avg_rating >= 3.5 and activity_rate >= 40:
-            return 'Bon'
-        elif avg_rating >= 3.0 and activity_rate >= 20:
-            return 'Moyen'
-        else:
-            return 'Difficile'
-    
-    def _get_rating_distribution(self, location: str = None) -> Dict:
-        """Obtient la distribution des notes pour une localisation"""
-        if self.data.market_rating_distribution is None:
-            return {}
-        
-        if location and location != 'Toutes les villes':
-            dist_data = self.data.market_rating_distribution[
-                self.data.market_rating_distribution['location_key'] == location
-            ]
-        else:
-            # Agrégation globale
-            dist_data = self.data.market_rating_distribution.groupby('rating')['review_count'].sum().reset_index()
-        
-        if dist_data.empty:
-            return {}
-        
-        # Convertir en dictionnaire {rating: count}
-        if location and location != 'Toutes les villes':
-            distribution = {}
-            for _, row in dist_data.iterrows():
-                distribution[int(row['rating'])] = int(row['review_count'])
-        else:
-            distribution = dict(zip(dist_data['rating'], dist_data['review_count']))
-        
-        return distribution
-    
-    def _get_monthly_trends(self, location: str = None, category: str = None) -> List[Dict]:
-        """Obtient les tendances mensuelles"""
-        if self.data.market_quarterly_trends is None:
-            return []
-        
-        trends_data = self.data.market_quarterly_trends.copy()
-        
-        if location and location != 'Toutes les villes':
-            trends_data = trends_data[trends_data['location_key'] == location]
-        
-        if trends_data.empty:
-            return []
-        
-        # Convertir les trimestres en format mensuel pour l'affichage
-        monthly_trends = trends_data.groupby('quarter').agg({
-            'avg_rating': 'mean',
-            'review_count': 'sum',
-            'active_businesses': 'sum'
-        }).reset_index()
-        
-        monthly_trends['month_str'] = monthly_trends['quarter']
-        
-        return monthly_trends.to_dict('records')
-    
-    def analyze_market_segments(self, location: str = None) -> Dict:
-        """Analyse des segments de marché depuis la base"""
-        if self.data.market_segments is None:
-            return {'segments': [], 'total_segments': 0}
-        
-        segments_data = self.data.market_segments.copy()
-        
-        if location and location != 'Toutes les villes':
-            segments_data = segments_data[segments_data['location_key'] == location]
-        else:
-            # Agrégation par catégorie pour vue globale
-            segments_data = segments_data.groupby('category').agg({
-                'business_count': 'sum',
-                'total_reviews': 'sum',
-                'avg_rating': 'mean',
-                'unique_reviewers': 'sum',
-                'opportunity_score': 'mean'
-            }).reset_index()
             
-            # Recalculer la saturation pour la vue globale
-            segments_data['saturation'] = segments_data['business_count'].apply(
-                lambda x: 'Faible' if x < 30 else 'Moyenne' if x < 100 else 'Élevée'
-            )
+        businesses = self.business_overview[['business_id', 'name', 'city', 'state', 'categories']].copy()
+        businesses['display_name'] = businesses['name'] + ' (' + businesses['city'] + ', ' + businesses['state'] + ')'
         
-        if segments_data.empty:
-            return {'segments': [], 'total_segments': 0}
-        
-        # Trier par score d'opportunité
-        segments_data = segments_data.sort_values('opportunity_score', ascending=False)
-        
-        return {
-            'segments': segments_data.head(15).to_dict('records'),
-            'total_segments': len(segments_data)
-        }
-    
-    def analyze_temporal_trends(self, location: str = None, category: str = None) -> Dict:
-        """Analyse des tendances temporelles depuis la base"""
-        if self.data.market_trends_summary is None:
-            return {'error': 'Aucune donnée de tendance disponible'}
-        
-        trends_data = self.data.market_trends_summary.copy()
-        
-        if location and location != 'Toutes les villes':
-            trends_data = trends_data[trends_data['location_key'] == location]
-        
-        if trends_data.empty:
-            return {'error': 'Aucune donnée de tendance pour cette localisation'}
-        
-        # Données trimestrielles détaillées
-        quarterly_data = self._get_quarterly_data(location)
-        
-        if len(trends_data) > 0:
-            trend_summary = trends_data.iloc[0]
-            
-            return {
-                'quarterly_data': quarterly_data,
-                'trend_interpretation': trend_summary.get('trend_interpretation', 'Données insuffisantes'),
-                'rating_trend': float(trend_summary.get('rating_trend', 0)),
-                'activity_trend': float(trend_summary.get('activity_trend', 0))
-            }
-        else:
-            return {
-                'quarterly_data': quarterly_data,
-                'trend_interpretation': 'Données insuffisantes pour analyser les tendances',
-                'rating_trend': 0,
-                'activity_trend': 0
-            }
-    
-    def _get_quarterly_data(self, location: str = None) -> List[Dict]:
-        """Obtient les données trimestrielles détaillées"""
-        if self.data.market_quarterly_trends is None:
-            return []
-        
-        quarterly_data = self.data.market_quarterly_trends.copy()
-        
-        if location and location != 'Toutes les villes':
-            quarterly_data = quarterly_data[quarterly_data['location_key'] == location]
-        else:
-            # Agrégation globale par trimestre
-            quarterly_data = quarterly_data.groupby('quarter').agg({
-                'avg_rating': 'mean',
-                'review_count': 'sum',
-                'active_businesses': 'sum',
-                'unique_users': 'sum'
-            }).reset_index()
-        
-        quarterly_data['quarter_str'] = quarterly_data['quarter']
-        
-        return quarterly_data.to_dict('records')
-    
-    def get_market_opportunities(self, location: str = None) -> Dict:
-        """Identifie les opportunités de marché depuis la base"""
-        if self.data.market_opportunities is None:
-            return {'opportunities': [], 'total_opportunities': 0}
-        
-        opportunities_data = self.data.market_opportunities.copy()
-        
-        if location and location != 'Toutes les villes':
-            opportunities_data = opportunities_data[opportunities_data['location_key'] == location]
-        
-        if opportunities_data.empty:
-            return {'opportunities': [], 'total_opportunities': 0}
-        
-        # Filtrer les vraies opportunités et trier
-        good_opportunities = opportunities_data[
-            opportunities_data['opportunity_score'] >= 4
-        ].sort_values('opportunity_score', ascending=False)
-        
-        return {
-            'opportunities': good_opportunities.head(10).to_dict('records'),
-            'total_opportunities': len(good_opportunities)
-        }
+        return businesses.to_dict('records')
 
 # ================== COUCHE DE VISUALISATION ==================
-class MarketDatabaseVisualizer:
-    def __init__(self, analyzer: MarketDatabaseAnalyzer):
-        self.analyzer = analyzer
+class YelpMarketVisualizer:
+    """Visualisations pour l'analyse de marché"""
     
-    def create_market_overview_chart(self, market_data: Dict):
-        """Graphique de vue d'ensemble du marché"""
-        if 'error' in market_data or not market_data.get('rating_distribution'):
+    def __init__(self, data: YelpMarketData):
+        self.data = data
+    
+    def create_market_locations_chart(self):
+        """Graphique des meilleures localisations de marché"""
+        if self.data.market_locations is None or self.data.market_locations.empty:
             return None
             
-        ratings = list(market_data['rating_distribution'].keys())
-        counts = list(market_data['rating_distribution'].values())
+        df = self.data.market_locations.head(15)
         
         fig = px.bar(
-            x=ratings,
-            y=counts,
-            title=f"Distribution des notes du marché ({market_data['total_reviews']:,} avis)",
-            labels={'x': 'Note (étoiles)', 'y': 'Nombre d\'avis'},
-            color=ratings,
+            df,
+            x='display_name',
+            y='business_count',
+            color='avg_rating',
+            hover_data=['total_reviews', 'unique_reviewers'],
+            title="Top 15 des localisations par nombre d'entreprises",
+            labels={'display_name': 'Localisation', 'business_count': 'Nombre d\'entreprises'},
             color_continuous_scale='RdYlGn'
         )
         
-        fig.update_layout(
-            xaxis_title="Note (étoiles)",
-            yaxis_title="Nombre d'avis",
-            showlegend=False
-        )
+        fig.update_xaxes(tickangle=45)
+        fig.update_layout(height=600)
         
         return fig
     
-    def create_segments_analysis_chart(self, segments_data: Dict):
-        """Graphique d'analyse des segments"""
-        if not segments_data.get('segments'):
+    def create_market_categories_chart(self):
+        """Graphique des catégories d'opportunités"""
+        if self.data.market_categories is None or self.data.market_categories.empty:
             return None
+            
+        df = self.data.market_categories.head(15)
         
-        df = pd.DataFrame(segments_data['segments'][:10])  # Top 10
-        
-        # Graphique en bulles : concurrence vs opportunité
         fig = px.scatter(
             df,
             x='business_count',
-            y='opportunity_score',
+            y='avg_rating',
             size='total_reviews',
-            color='avg_rating',
+            color='opportunity_score',
             hover_name='category',
-            title='Analyse des segments de marché',
-            labels={
-                'business_count': 'Nombre d\'entreprises (concurrence)',
-                'opportunity_score': 'Score d\'opportunité',
-                'avg_rating': 'Note moyenne',
-                'total_reviews': 'Volume d\'avis'
-            },
-            color_continuous_scale='RdYlGn',
-            size_max=50
+            hover_data=['saturation'],
+            title="Analyse des catégories de marché",
+            labels={'business_count': 'Nombre d\'entreprises', 'avg_rating': 'Note moyenne'},
+            color_continuous_scale='RdYlGn'
         )
         
+        fig.update_layout(height=600)
+        
+        return fig
+    
+    def create_market_overview_chart(self, selected_location: str = None):
+        """Vue d'ensemble d'un marché spécifique"""
+        if self.data.market_overview is None or self.data.market_overview.empty:
+            return None
+        
+        if selected_location:
+            df = self.data.market_overview[
+                self.data.market_overview['location_key'] == selected_location
+            ]
+        else:
+            df = self.data.market_overview.head(10)
+        
+        if df.empty:
+            return None
+            
+        fig = go.Figure()
+        
+        fig.add_trace(go.Bar(
+            name='Total des entreprises',
+            x=df['location_key'],
+            y=df['total_businesses'],
+            yaxis='y'
+        ))
+        
+        fig.add_trace(go.Scatter(
+            name='Note moyenne du marché',
+            x=df['location_key'],
+            y=df['avg_market_rating'],
+            yaxis='y2',
+            mode='lines+markers',
+            line=dict(color='red')
+        ))
+        
         fig.update_layout(
-            xaxis_title="Concurrence (nombre d'entreprises)",
-            yaxis_title="Score d'opportunité"
+            title='Vue d\'ensemble des marchés',
+            xaxis=dict(title='Localisation'),
+            yaxis=dict(title='Nombre d\'entreprises', side='left'),
+            yaxis2=dict(title='Note moyenne', side='right', overlaying='y'),
+            height=500
         )
         
         return fig
     
-    def create_temporal_trends_chart(self, trends_data: Dict):
+    def create_market_trends_chart(self, selected_location: str = None):
         """Graphique des tendances temporelles"""
-        if 'error' in trends_data or not trends_data.get('quarterly_data'):
+        if self.data.market_quarterly_trends is None or self.data.market_quarterly_trends.empty:
             return None
         
-        df = pd.DataFrame(trends_data['quarterly_data'])
+        if selected_location:
+            df = self.data.market_quarterly_trends[
+                self.data.market_quarterly_trends['location_key'] == selected_location
+            ].sort_values('quarter')
+        else:
+            # Prendre les 5 localisations les plus actives
+            top_locations = self.data.market_quarterly_trends.groupby('location_key')['review_count'].sum().nlargest(5).index
+            df = self.data.market_quarterly_trends[
+                self.data.market_quarterly_trends['location_key'].isin(top_locations)
+            ].sort_values(['location_key', 'quarter'])
         
         if df.empty:
             return None
         
-        # Graphique avec deux axes Y
-        fig = make_subplots(
-            specs=[[{"secondary_y": True}]],
-            subplot_titles=('Évolution temporelle du marché')
+        fig = px.line(
+            df,
+            x='quarter',
+            y='avg_rating',
+            color='location_key',
+            title='Évolution de la qualité par marché',
+            labels={'quarter': 'Trimestre', 'avg_rating': 'Note moyenne'},
+            markers=True
         )
         
-        # Note moyenne
-        fig.add_trace(
-            go.Scatter(
-                x=df['quarter_str'],
-                y=df['avg_rating'],
-                name='Note moyenne',
-                line=dict(color='blue', width=3),
-                mode='lines+markers'
-            ),
-            secondary_y=False,
-        )
-        
-        # Activité (nombre d'avis)
-        fig.add_trace(
-            go.Bar(
-                x=df['quarter_str'],
-                y=df['review_count'],
-                name='Nombre d\'avis',
-                opacity=0.6,
-                yaxis='y2'
-            ),
-            secondary_y=True,
-        )
-        
-        fig.update_xaxes(title_text="Trimestre")
-        fig.update_yaxes(title_text="Note moyenne", secondary_y=False)
-        fig.update_yaxes(title_text="Nombre d'avis", secondary_y=True)
+        fig.update_layout(height=500)
         
         return fig
     
-    def create_opportunities_chart(self, opportunities_data: Dict):
+    def create_opportunities_chart(self):
         """Graphique des opportunités de marché"""
-        if not opportunities_data.get('opportunities'):
+        if self.data.market_opportunities is None or self.data.market_opportunities.empty:
             return None
+            
+        df = self.data.market_opportunities.head(20)
         
-        df = pd.DataFrame(opportunities_data['opportunities'])
-        
-        # Graphique en barres horizontales
-        fig = px.bar(
+        fig = px.scatter(
             df,
-            x='opportunity_score',
-            y='category',
-            orientation='h',
+            x='business_count',
+            y='avg_rating',
+            size='total_reviews',
             color='opportunity_score',
-            title='Top opportunités de marché',
-            labels={'opportunity_score': 'Score d\'opportunité', 'category': 'Catégorie'},
-            color_continuous_scale='Viridis'
+            hover_name='category',
+            facet_col='state',
+            facet_col_wrap=3,
+            title="Opportunités de marché par état et catégorie",
+            labels={'business_count': 'Concurrence', 'avg_rating': 'Qualité actuelle'},
+            color_continuous_scale='RdYlGn'
         )
         
-        fig.update_layout(
-            yaxis={'categoryorder': 'total ascending'},
-            showlegend=False
+        fig.update_layout(height=800)
+        
+        return fig
+    
+    def create_rating_distribution_market_chart(self, selected_location: str):
+        """Distribution des notes pour un marché spécifique"""
+        if self.data.market_rating_distribution is None or self.data.market_rating_distribution.empty:
+            return None
+        
+        df = self.data.market_rating_distribution[
+            self.data.market_rating_distribution['location_key'] == selected_location
+        ]
+        
+        if df.empty:
+            return None
+        
+        fig = px.bar(
+            df,
+            x='rating',
+            y='review_count',
+            title=f"Distribution des notes - {selected_location}",
+            labels={'rating': 'Note (étoiles)', 'review_count': 'Nombre d\'avis'},
+            color='rating',
+            color_continuous_scale='RdYlGn'
         )
         
         return fig
@@ -442,230 +287,310 @@ class MarketDatabaseVisualizer:
 # ================== INTERFACE STREAMLIT ==================
 def main():
     st.set_page_config(
-        page_title="Analyse de Marché Yelp - Database",
-        page_icon="📊",
+        page_title="Yelp Market Analytics Dashboard",
+        page_icon="🏪",
         layout="wide"
     )
     
-    st.title("📊 Analyse de Marché Yelp (Database)")
-    st.markdown("Explorez les tendances, segments et opportunités du marché depuis PostgreSQL")
+    st.title("🏪 Yelp Market Analytics Dashboard")
+    st.markdown("### Analyse de marché basée sur les données traitées par Spark Scala")
     st.markdown("---")
     
     # Initialisation des données
-    if 'market_db_data' not in st.session_state:
-        st.session_state.market_db_data = YelpMarketDatabaseData()
-        st.session_state.market_db_loaded = False
+    if 'yelp_market_data' not in st.session_state:
+        st.session_state.yelp_market_data = YelpMarketData()
+        st.session_state.market_data_loaded = False
     
-    # Chargement des données depuis la base
-    if not st.session_state.market_db_loaded:
+    # Chargement des données
+    if not st.session_state.market_data_loaded:
         with st.spinner("Chargement des données d'analyse de marché depuis PostgreSQL..."):
-            if st.session_state.market_db_data.load_all_data():
-                st.session_state.market_db_loaded = True
+            if st.session_state.yelp_market_data.load_all_data():
+                st.session_state.market_data_loaded = True
                 st.success("Données d'analyse de marché chargées avec succès!")
             else:
                 st.error("Impossible de charger les données d'analyse de marché")
+                st.error("Veuillez exécuter le traitement Spark Scala (MarketAnalysis) avant d'utiliser ce dashboard.")
                 st.stop()
     
-    # Sidebar pour les filtres
+    # Sidebar
     with st.sidebar:
-        st.header("🎯 Filtres d'analyse")
+        st.header("🏪 Analyse de Marché")
         
-        if st.session_state.market_db_loaded:
-            st.success("✅ Connexion PostgreSQL active")
+        if st.session_state.market_data_loaded:
+            st.success("✅ Données Spark chargées")
             
-            data = st.session_state.market_db_data
+            data = st.session_state.yelp_market_data
             
+            # Statistiques générales
             if data.market_locations is not None:
-                st.info(f"📍 {len(data.market_locations)} localisations")
+                st.info(f"📍 {len(data.market_locations)} localisations analysées")
             if data.market_categories is not None:
                 st.info(f"🏷️ {len(data.market_categories)} catégories")
             if data.market_opportunities is not None:
-                st.info(f"💡 {len(data.market_opportunities)} opportunités")
-        
-        # Filtres géographiques
-        analyzer = MarketDatabaseAnalyzer(st.session_state.market_db_data)
-        locations = analyzer.data.get_available_locations()
-        
-        st.subheader("📍 Localisation")
-        location_options = ['Toutes les villes'] + [loc['display_name'] for loc in locations[:50]]
-        selected_location = st.selectbox("Sélectionnez une ville:", location_options)
-        location_filter = None if selected_location == 'Toutes les villes' else selected_location
-        
-        # Filtres par catégorie
-        st.subheader("🏷️ Catégorie")
-        categories = analyzer.data.get_available_categories()
-        category_options = ['Toutes les catégories'] + categories[:30]
-        selected_category = st.selectbox("Sélectionnez une catégorie:", category_options)
-        category_filter = None if selected_category == 'Toutes les catégories' else selected_category
+                st.info(f"💡 {len(data.market_opportunities)} opportunités détectées")
         
         st.markdown("---")
-        st.text("🔗 Base: PostgreSQL")
+        st.text("🔗 Source: Spark Scala + PostgreSQL")
         st.text(f"🏠 Host: {DB_CONFIG['host']}")
         st.text(f"📋 DB: {DB_CONFIG['dbname']}")
         
-        if st.button("🔄 Recharger depuis la base"):
-            st.session_state.market_db_loaded = False
+        if st.button("🔄 Recharger les données"):
+            st.session_state.market_data_loaded = False
             st.rerun()
     
     # Interface principale
-    if st.session_state.market_db_loaded:
-        visualizer = MarketDatabaseVisualizer(analyzer)
+    if st.session_state.market_data_loaded:
+        data = st.session_state.yelp_market_data
+        visualizer = YelpMarketVisualizer(data)
         
-        # Vue d'ensemble du marché
-        st.header("🌟 Vue d'ensemble du marché")
+        # Choix du type d'analyse
+        st.header("📊 Type d'analyse")
+        analysis_type = st.selectbox(
+            "Choisissez le type d'analyse:",
+            [
+                "Vue d'ensemble du marché",
+                "Analyse par localisation",
+                "Opportunités de marché",
+                "Analyse des catégories",
+                "Tendances temporelles",
+                "Analyse business spécifique"
+            ]
+        )
         
-        market_overview = analyzer.analyze_market_overview(location_filter, category_filter)
-        
-        if 'error' not in market_overview:
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                st.metric("Entreprises totales", f"{market_overview['total_businesses']:,}")
-            
-            with col2:
-                st.metric("Entreprises actives", f"{market_overview['active_businesses']:,}")
-            
-            with col3:
-                st.metric("Total avis", f"{market_overview['total_reviews']:,}")
-            
-            with col4:
-                health_color = {
-                    'Excellent': '🟢', 'Bon': '🟡', 'Moyen': '🟠', 'Difficile': '🔴'
-                }.get(market_overview['market_health'], '⚪')
-                st.metric("Santé du marché", f"{health_color} {market_overview['market_health']}")
-            
-            # Note moyenne avec contexte
-            st.info(f"📊 **Note moyenne du marché :** {market_overview['avg_market_rating']}/5")
-            
-            # Graphique de distribution
-            chart = visualizer.create_market_overview_chart(market_overview)
-            if chart:
-                st.plotly_chart(chart, use_container_width=True)
-        
-        else:
-            st.warning(market_overview['error'])
-        
-        # Analyse des segments
         st.markdown("---")
-        st.header("🎯 Analyse des segments de marché")
         
-        segments_data = analyzer.analyze_market_segments(location_filter)
-        
-        if segments_data['segments']:
-            # Graphique des segments
-            chart = visualizer.create_segments_analysis_chart(segments_data)
-            if chart:
-                st.plotly_chart(chart, use_container_width=True)
+        if analysis_type == "Vue d'ensemble du marché":
+            st.header("🌍 Vue d'ensemble du marché")
             
-            # Table des segments
-            st.subheader("📋 Top segments par opportunité")
-            segments_df = pd.DataFrame(segments_data['segments'][:10])
+            # Métriques générales
+            if data.market_overview is not None and not data.market_overview.empty:
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    total_businesses = data.market_overview['total_businesses'].sum()
+                    st.metric("Total entreprises", f"{total_businesses:,}")
+                
+                with col2:
+                    avg_rating = data.market_overview['avg_market_rating'].mean()
+                    st.metric("Note moyenne globale", f"{avg_rating:.2f}/5")
+                
+                with col3:
+                    active_businesses = data.market_overview['active_businesses'].sum()
+                    st.metric("Entreprises actives", f"{active_businesses:,}")
+                
+                with col4:
+                    avg_activity = data.market_overview['activity_rate'].mean()
+                    st.metric("Taux d'activité moyen", f"{avg_activity:.1f}%")
             
-            # Sélectionner et renommer les colonnes
-            display_columns = ['category', 'business_count', 'avg_rating', 'total_reviews', 'opportunity_score', 'saturation']
-            available_columns = [col for col in display_columns if col in segments_df.columns]
+            # Graphiques
+            tab1, tab2 = st.tabs(["Localisations", "Vue d'ensemble"])
             
-            if available_columns:
-                segments_display = segments_df[available_columns].copy()
-                segments_display.columns = ['Catégorie', 'Nb entreprises', 'Note moyenne', 'Total avis', 'Score opportunité', 'Saturation'][:len(available_columns)]
-                st.dataframe(segments_display, use_container_width=True, hide_index=True)
+            with tab1:
+                chart = visualizer.create_market_locations_chart()
+                if chart:
+                    st.plotly_chart(chart, use_container_width=True)
+                else:
+                    st.warning("Aucune donnée de localisation disponible")
+            
+            with tab2:
+                chart = visualizer.create_market_overview_chart()
+                if chart:
+                    st.plotly_chart(chart, use_container_width=True)
+                else:
+                    st.warning("Aucune donnée de vue d'ensemble disponible")
         
-        else:
-            st.warning("Aucun segment trouvé pour ces critères")
-        
-        # Tendances temporelles
-        st.markdown("---")
-        st.header("📈 Tendances temporelles")
-        
-        trends_data = analyzer.analyze_temporal_trends(location_filter, category_filter)
-        
-        if 'error' not in trends_data:
-            # Afficher l'interprétation des tendances
-            if trends_data['rating_trend'] > 0:
-                st.success(f"📈 Amélioration de la qualité (+{trends_data['rating_trend']:.2f} étoiles)")
-            elif trends_data['rating_trend'] < 0:
-                st.warning(f"📉 Dégradation de la qualité ({trends_data['rating_trend']:.2f} étoiles)")
+        elif analysis_type == "Analyse par localisation":
+            st.header("📍 Analyse par localisation")
+            
+            # Sélection de la localisation
+            locations = data.get_market_locations_list()
+            if locations:
+                location_names = [loc['display_name'] for loc in locations]
+                selected_location = st.selectbox("Choisissez une localisation:", location_names)
+                
+                # Trouver la localisation sélectionnée
+                selected_loc_data = next(loc for loc in locations if loc['display_name'] == selected_location)
+                
+                # Métriques de la localisation
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    st.metric("Entreprises", selected_loc_data['business_count'])
+                
+                with col2:
+                    st.metric("Note moyenne", f"{selected_loc_data['avg_rating']:.2f}/5")
+                
+                with col3:
+                    st.metric("Total avis", f"{selected_loc_data['total_reviews']:,}")
+                
+                with col4:
+                    st.metric("Utilisateurs uniques", f"{selected_loc_data['unique_reviewers']:,}")
+                
+                # Graphiques spécifiques à la localisation
+                tab1, tab2, tab3 = st.tabs(["Vue d'ensemble", "Distribution des notes", "Tendances"])
+                
+                with tab1:
+                    chart = visualizer.create_market_overview_chart(selected_location)
+                    if chart:
+                        st.plotly_chart(chart, use_container_width=True)
+                
+                with tab2:
+                    chart = visualizer.create_rating_distribution_market_chart(selected_location)
+                    if chart:
+                        st.plotly_chart(chart, use_container_width=True)
+                
+                with tab3:
+                    chart = visualizer.create_market_trends_chart(selected_location)
+                    if chart:
+                        st.plotly_chart(chart, use_container_width=True)
             else:
-                st.info("📊 Qualité stable")
+                st.warning("Aucune donnée de localisation disponible")
+        
+        elif analysis_type == "Opportunités de marché":
+            st.header("💡 Opportunités de marché")
             
-            if trends_data['activity_trend'] > 0:
-                st.success(f"📈 Augmentation d'activité (+{trends_data['activity_trend']:.1f} avis/trimestre)")
-            elif trends_data['activity_trend'] < 0:
-                st.warning(f"📉 Baisse d'activité ({trends_data['activity_trend']:.1f} avis/trimestre)")
+            if data.market_opportunities is not None and not data.market_opportunities.empty:
+                # Top opportunités
+                st.subheader("🏆 Meilleures opportunités")
+                top_opportunities = data.market_opportunities.head(10)
+                
+                for _, opp in top_opportunities.iterrows():
+                    with st.expander(f"🎯 {opp['category']} à {opp['location_key']} (Score: {opp['opportunity_score']:.1f})"):
+                        col1, col2, col3 = st.columns(3)
+                        
+                        with col1:
+                            st.metric("Concurrence", f"{opp['business_count']} entreprises")
+                        
+                        with col2:
+                            st.metric("Qualité actuelle", f"{opp['avg_rating']:.1f}/5")
+                        
+                        with col3:
+                            st.metric("Demande", f"{opp['total_reviews']:,} avis")
+                        
+                        st.info(f"**Type:** {opp['opportunity_type']}")
+                        st.write(f"**Description:** {opp['description']}")
+                
+                # Graphique des opportunités
+                st.subheader("📊 Visualisation des opportunités")
+                chart = visualizer.create_opportunities_chart()
+                if chart:
+                    st.plotly_chart(chart, use_container_width=True)
             else:
-                st.info("📊 Activité stable")
-            
-            st.info(f"**Analyse :** {trends_data['trend_interpretation']}")
-            
-            # Graphique des tendances
-            chart = visualizer.create_temporal_trends_chart(trends_data)
-            if chart:
-                st.plotly_chart(chart, use_container_width=True)
+                st.warning("Aucune opportunité de marché disponible")
         
-        else:
-            st.warning(trends_data['error'])
-        
-        # Opportunités de marché
-        st.markdown("---")
-        st.header("💡 Opportunités de marché")
-        
-        opportunities = analyzer.get_market_opportunities(location_filter)
-        
-        if opportunities['opportunities']:
-            # Graphique des opportunités
-            chart = visualizer.create_opportunities_chart(opportunities)
-            if chart:
-                st.plotly_chart(chart, use_container_width=True)
+        elif analysis_type == "Analyse des catégories":
+            st.header("🏷️ Analyse des catégories")
             
-            # Liste des opportunités
-            st.subheader("🚀 Recommandations stratégiques")
+            if data.market_categories is not None and not data.market_categories.empty:
+                # Graphique des catégories
+                chart = visualizer.create_market_categories_chart()
+                if chart:
+                    st.plotly_chart(chart, use_container_width=True)
+                
+                # Tableau des catégories
+                st.subheader("📋 Détail des catégories")
+                
+                # Filtres
+                col1, col2 = st.columns(2)
+                with col1:
+                    saturation_filter = st.selectbox(
+                        "Filtrer par saturation:",
+                        ["Toutes"] + list(data.market_categories['saturation'].unique())
+                    )
+                
+                with col2:
+                    min_score = st.slider("Score d'opportunité minimum:", 0.0, 10.0, 0.0, 0.5)
+                
+                # Appliquer les filtres
+                filtered_categories = data.market_categories.copy()
+                if saturation_filter != "Toutes":
+                    filtered_categories = filtered_categories[filtered_categories['saturation'] == saturation_filter]
+                filtered_categories = filtered_categories[filtered_categories['opportunity_score'] >= min_score]
+                
+                st.dataframe(
+                    filtered_categories[['category', 'business_count', 'avg_rating', 'total_reviews', 'saturation', 'opportunity_score']],
+                    use_container_width=True
+                )
+            else:
+                st.warning("Aucune donnée de catégorie disponible")
+        
+        elif analysis_type == "Tendances temporelles":
+            st.header("📈 Tendances temporelles")
             
-            for i, opp in enumerate(opportunities['opportunities'][:5], 1):
-                with st.expander(f"{i}. {opp['category']} - {opp.get('opportunity_type', 'Opportunité')}"):
-                    st.write(f"**Description :** {opp.get('description', 'Opportunité identifiée')}")
+            if data.market_trends_summary is not None and not data.market_trends_summary.empty:
+                # Métriques des tendances
+                st.subheader("📊 Résumé des tendances")
+                
+                positive_trends = len(data.market_trends_summary[data.market_trends_summary['rating_trend'] > 0.1])
+                negative_trends = len(data.market_trends_summary[data.market_trends_summary['rating_trend'] < -0.1])
+                stable_trends = len(data.market_trends_summary) - positive_trends - negative_trends
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.metric("Marchés en amélioration", positive_trends, delta=f"+{positive_trends}")
+                
+                with col2:
+                    st.metric("Marchés stables", stable_trends)
+                
+                with col3:
+                    st.metric("Marchés en dégradation", negative_trends, delta=f"-{negative_trends}")
+                
+                # Graphique des tendances
+                chart = visualizer.create_market_trends_chart()
+                if chart:
+                    st.plotly_chart(chart, use_container_width=True)
+                
+                # Tableau des interprétations
+                st.subheader("🔍 Interprétations des tendances")
+                st.dataframe(
+                    data.market_trends_summary[['location_key', 'rating_trend', 'activity_trend', 'trend_interpretation']],
+                    use_container_width=True
+                )
+            else:
+                st.warning("Aucune donnée de tendance disponible")
+        
+        elif analysis_type == "Analyse business spécifique":
+            st.header("🏢 Analyse business spécifique")
+            
+            # Cette section utilise les analyses business existantes
+            businesses = data.get_business_list()
+            if businesses:
+                business_names = [b['display_name'] for b in businesses]
+                selected_business = st.selectbox("Choisissez une entreprise:", business_names)
+                
+                selected_id = next(b['business_id'] for b in businesses if b['display_name'] == selected_business)
+                
+                # Récupérer les données business
+                if data.business_overview is not None:
+                    business_data = data.business_overview[data.business_overview['business_id'] == selected_id]
                     
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("Score d'opportunité", f"{opp['opportunity_score']:.1f}/10")
-                    with col2:
-                        st.metric("Concurrence", f"{opp['business_count']} entreprises")
-                    with col3:
-                        st.metric("Note moyenne actuelle", f"{opp['avg_rating']:.1f}/5")
-        
-        else:
-            st.info("Aucune opportunité spécifique identifiée pour ces critères")
-        
-        # Insights et recommandations finales
-        st.markdown("---")
-        st.header("🎯 Recommandations stratégiques")
-        
-        if 'error' not in market_overview:
-            recommendations = []
-            
-            # Recommandations basées sur la santé du marché
-            if market_overview['market_health'] == 'Excellent':
-                recommendations.append("✅ Marché mature et de qualité - Focus sur la différenciation")
-            elif market_overview['market_health'] == 'Difficile':
-                recommendations.append("⚠️ Marché difficile - Opportunité d'améliorer les standards")
-            
-            # Recommandations basées sur l'activité
-            if market_overview['total_businesses'] > 0:
-                activity_rate = (market_overview['active_businesses'] / market_overview['total_businesses']) * 100
-                if activity_rate < 30:
-                    recommendations.append("📢 Faible activité générale - Opportunité de marketing digital")
-            
-            # Recommandations basées sur les notes
-            if market_overview['avg_market_rating'] < 3.5:
-                recommendations.append("🎯 Standards de qualité bas - Fort potentiel d'amélioration")
-            
-            if not recommendations:
-                recommendations.append("📊 Marché équilibré - Analyser les segments spécifiques pour identifier les opportunités")
-            
-            for rec in recommendations:
-                st.info(rec)
-    
-    else:
-        st.info("🔄 Chargement des données d'analyse de marché en cours...")
+                    if not business_data.empty:
+                        business = business_data.iloc[0]
+                        
+                        # Métriques business
+                        col1, col2, col3, col4 = st.columns(4)
+                        
+                        with col1:
+                            st.metric("Note moyenne", f"{business['average_rating']:.2f}/5")
+                        
+                        with col2:
+                            st.metric("Total avis", business['total_reviews'])
+                        
+                        with col3:
+                            st.metric("Statut", "🟢 Ouvert" if business['is_open'] else "🔴 Fermé")
+                        
+                        with col4:
+                            st.metric("Tendance récente", f"{business.get('recent_average', 0):.2f}/5")
+                        
+                        # Informations
+                        st.info(f"**Nom:** {business['name']}")
+                        st.info(f"**Adresse:** {business.get('address', '')}, {business.get('city', '')}, {business.get('state', '')}")
+                        st.info(f"**Catégories:** {business.get('categories', 'Non spécifié')}")
+                    else:
+                        st.warning("Données business non trouvées")
+            else:
+                st.warning("Aucune entreprise disponible")
 
 if __name__ == "__main__":
     main()

@@ -5,12 +5,11 @@
 // import scala.annotation.tailrec
 // import org.apache.spark.sql.functions._
 // import scala.util.{Failure, Success, Try}
-// import Config.{BUSINESS_TABLE, DB_CONFIG, REVIEW_TABLE, TOP_CATEGORIES_TABLE, USER_TABLE}
 // import org.apache.spark.sql.functions._
 
 // object CreateData {
 
-//     val REVIW_COUNT = 10000
+//     val REVIW_COUNT = 500000
 //     def main(args: Array[String]): Unit = {
         
 //       val spark = SparkSession.builder()

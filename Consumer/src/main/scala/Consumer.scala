@@ -23,6 +23,7 @@ import UpdateDatabase.{
 
 import  BusinessAnalytics.processAllBusinessAnalytics
 import  CompetitiveAnalysis.processAllCompetitiveAnalytics
+import  MarketAnalysis.processAllMarketAnalytics
 
 object Consumer {
 
@@ -81,7 +82,7 @@ object Consumer {
 
   private def consumeKafkaTopic(spark: SparkSession, businessDF: DataFrame, usersDF: DataFrame): Unit = {
 
-    val maybeKafkaDF = tryConnect(spark, attempt=1, retries=5, delaySeconds=5)
+    val maybeKafkaDF = tryConnect(spark, attempt=1, retries=15, delaySeconds=5)
 
     maybeKafkaDF match {
       case Some(kafkaStreamDF) =>
@@ -93,24 +94,23 @@ object Consumer {
           
           parsedMessages.writeStream
             .foreachBatch { (newBatch: DataFrame, batchId: Long) =>
+              if (!newBatch.isEmpty) {
+                val allReviews = updateReviewTable(spark, newBatch)
 
-              val allReviews = updateReviewTable(spark, newBatch)
+                val activeBusinessIds = allReviews.select("business_id").distinct()
+                val activeUserIds = allReviews.select("user_id").distinct()
+                val filteredBusiness = businessDF.join(activeBusinessIds, "business_id")
+                val filteredUsers = usersDF.join(activeUserIds, "user_id")
 
-              val activeBusinessIds = allReviews.select("business_id").distinct()
-              val activeUserIds = allReviews.select("user_id").distinct()
-              val filteredBusiness = businessDF.join(activeBusinessIds, "business_id")
-              val filteredUsers = usersDF.join(activeUserIds, "user_id")
+                val allUsers = updateUserTable(filteredUsers)
+                val allBusiness = updateBusinessTable(filteredBusiness)
 
-              val allUsers = updateUserTable(filteredUsers)
-              val allBusiness = updateBusinessTable(filteredBusiness)
+                processAllBusinessAnalytics(spark, filteredBusiness, filteredUsers, allReviews)
+                processAllCompetitiveAnalytics(spark, filteredBusiness, allReviews)
+                processAllMarketAnalytics(spark, filteredBusiness, allReviews)
 
-              //println(s"allReviews ${allReviews.count()} allUsers ${allUsers.count()} allBusiness ${allBusiness.count()}")
-              println(s"allReviews ${allReviews.count()} filteredUsers ${filteredUsers.count()} filteredBusiness ${filteredBusiness.count()}")
-
-              processAllBusinessAnalytics(spark, filteredBusiness, filteredUsers, allReviews)
-              processAllCompetitiveAnalytics(spark, filteredBusiness, allReviews)
-
-              println(s"Batch $batchId traité et statistiques insérées.")
+                println(s"Batch $batchId traité et statistiques insérées.")
+              }
             }
             .outputMode("append")
             .start()
