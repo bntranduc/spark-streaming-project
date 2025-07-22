@@ -288,67 +288,67 @@ class CompetitiveDatabaseVisualizer:
     def __init__(self, analyzer: CompetitiveDatabaseAnalyzer):
         self.analyzer = analyzer
     
-    def create_market_overview_chart(self, business_id: str, competitors: List[Dict]):
-        """Graphique de vue d'ensemble du marché"""
-        if not competitors:
-            return None
+    # def create_market_overview_chart(self, business_id: str, competitors: List[Dict]):
+    #     """Graphique de vue d'ensemble du marché"""
+    #     if not competitors:
+    #         return None
         
-        target_info = self.analyzer.get_target_business_info(business_id)
+    #     target_info = self.analyzer.get_target_business_info(business_id)
         
-        # Préparer les données
-        all_data = competitors.copy()
-        all_data.append({
-            'name': target_info['name'] + ' (Vous)',
-            'avg_rating': target_info['average_rating'],
-            'review_count': target_info['total_reviews'],
-            'is_target': True
-        })
+    #     # Préparer les données
+    #     all_data = competitors.copy()
+    #     all_data.append({
+    #         'name': target_info['name'] + ' (Vous)',
+    #         'avg_rating': target_info['average_rating'],
+    #         'review_count': target_info['total_reviews'],
+    #         'is_target': True
+    #     })
         
-        # Ajouter la colonne is_target pour les concurrents
-        for comp in competitors:
-            comp['is_target'] = False
+    #     # Ajouter la colonne is_target pour les concurrents
+    #     for comp in competitors:
+    #         comp['is_target'] = False
         
-        df = pd.DataFrame(all_data)
+    #     df = pd.DataFrame(all_data)
         
-        # Graphique en bulles
-        fig = px.scatter(
-            df,
-            x='avg_rating',
-            y='review_count',
-            size='review_count',
-            color='is_target',
-            hover_name='name',
-            hover_data=['avg_rating', 'review_count'],
-            title='Positionnement concurrentiel - Note vs Popularité',
-            labels={
-                'avg_rating': 'Note moyenne (étoiles)',
-                'review_count': 'Nombre d\'avis (popularité)',
-                'is_target': 'Type'
-            },
-            color_discrete_map={True: '#FF6B6B', False: '#4ECDC4'}
-        )
+    #     # Graphique en bulles
+    #     fig = px.scatter(
+    #         df,
+    #         x='avg_rating',
+    #         y='review_count',
+    #         size='review_count',
+    #         color='is_target',
+    #         hover_name='name',
+    #         hover_data=['avg_rating', 'review_count'],
+    #         title='Positionnement concurrentiel - Note vs Popularité',
+    #         labels={
+    #             'avg_rating': 'Note moyenne (étoiles)',
+    #             'review_count': 'Nombre d\'avis (popularité)',
+    #             'is_target': 'Type'
+    #         },
+    #         color_discrete_map={True: '#FF6B6B', False: '#4ECDC4'}
+    #     )
         
-        fig.update_layout(
-            xaxis=dict(range=[0, 5.5]),
-            showlegend=True,
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="right",
-                x=1
-            )
-        )
+    #     fig.update_layout(
+    #         xaxis=dict(range=[0, 5.5]),
+    #         showlegend=True,
+    #         legend=dict(
+    #             orientation="h",
+    #             yanchor="bottom",
+    #             y=1.02,
+    #             xanchor="right",
+    #             x=1
+    #         )
+    #     )
         
-        # Ajouter des lignes de référence
-        if len(df) > 1:
-            avg_rating_all = df['avg_rating'].mean()
-            avg_reviews_all = df['review_count'].mean()
+    #     # Ajouter des lignes de référence
+    #     if len(df) > 1:
+    #         avg_rating_all = df['avg_rating'].mean()
+    #         avg_reviews_all = df['review_count'].mean()
             
-            fig.add_hline(y=avg_reviews_all, line_dash="dash", line_color="gray", opacity=0.5)
-            fig.add_vline(x=avg_rating_all, line_dash="dash", line_color="gray", opacity=0.5)
+    #         fig.add_hline(y=avg_reviews_all, line_dash="dash", line_color="gray", opacity=0.5)
+    #         fig.add_vline(x=avg_rating_all, line_dash="dash", line_color="gray", opacity=0.5)
         
-        return fig
+    #     return fig
     
     def create_rating_comparison_chart(self, comparison_data: List[Dict]):
         """Graphique de comparaison des notes"""
@@ -570,10 +570,10 @@ def main():
                     st.metric("Position", positioning['position'])
                 
                 with col2:
-                    st.metric("Percentile notes", f"{positioning['percentile_rating']:.0f}%")
+                    st.metric("Proportion de concurrents avec une note inférieure", f"{positioning['percentile_rating']:.0f}%")
                 
                 with col3:
-                    st.metric("Percentile popularité", f"{positioning['percentile_popularity']:.0f}%")
+                    st.metric("Proportion de concurrents avec une popularité inférieure", f"{positioning['percentile_popularity']:.0f}%")
                 
                 with col4:
                     st.metric("Concurrents totaux", positioning['total_competitors'])
@@ -623,19 +623,18 @@ def main():
                 st.markdown("---")
                 st.header("📊 Analyses visuelles")
                 
-                tab1, tab2, tab3, tab4 = st.tabs([
-                    "Positionnement marché", 
+                tab2, tab3, tab4 = st.tabs([
                     "Comparaison notes", 
                     "Distribution détaillée",
                     "Parts de marché"
                 ])
                 
-                with tab1:
-                    chart = visualizer.create_market_overview_chart(selected_id, competitors)
-                    if chart:
-                        st.plotly_chart(chart, use_container_width=True)
-                    else:
-                        st.warning("Impossible de créer le graphique de positionnement")
+                # with tab1:
+                #     chart = visualizer.create_market_overview_chart(selected_id, competitors)
+                #     if chart:
+                #         st.plotly_chart(chart, use_container_width=True)
+                #     else:
+                #         st.warning("Impossible de créer le graphique de positionnement")
                 
                 with tab2:
                     comparison = analyzer.get_detailed_comparison(selected_id, competitors)

@@ -23,7 +23,6 @@ import UpdateDatabase.{
 
 import  BusinessAnalytics.processAllBusinessAnalytics
 import  CompetitiveAnalysis.processAllCompetitiveAnalytics
-import  MarketAnalysis.processAllMarketAnalytics
 
 object Consumer {
 
@@ -107,7 +106,6 @@ object Consumer {
 
                 processAllBusinessAnalytics(spark, filteredBusiness, filteredUsers, allReviews)
                 processAllCompetitiveAnalytics(spark, filteredBusiness, allReviews)
-                processAllMarketAnalytics(spark, filteredBusiness, allReviews)
 
                 println(s"Batch $batchId traité et statistiques insérées.")
               }

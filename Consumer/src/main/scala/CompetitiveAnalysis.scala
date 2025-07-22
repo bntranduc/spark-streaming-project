@@ -15,7 +15,7 @@ object CompetitiveAnalysis {
             .agg(
                 count("*").alias("total_reviews"),
                 avg("stars").alias("average_rating"),
-                stddev("stars").alias("rating_stddev"),
+                stddev("stars").alias("rating_stddev"), // l'equart type
                 sum("useful").alias("total_useful"),
                 sum("funny").alias("total_funny"),
                 sum("cool").alias("total_cool"),
@@ -52,9 +52,9 @@ object CompetitiveAnalysis {
             .join(recentStats, Seq("business_id"), "left")
             .join(ratingDistribution, "business_id")
             .withColumn("average_rating", round(col("average_rating"), 2))
-            .withColumn("recent_average", round(coalesce(col("recent_average"), col("average_rating")), 2))
-            .withColumn("rating_stddev", round(coalesce(col("rating_stddev"), lit(0)), 2))
-            .withColumn("recent_reviews", coalesce(col("recent_reviews"), lit(0)))
+            .withColumn("recent_average", round(coalesce(col("recent_average"), col("average_rating")), 2)) // si pas de notes recent mettre la note moyennes
+            .withColumn("rating_stddev", round(coalesce(col("rating_stddev"), lit(0)), 2)) // si pas d'equart type mettre 0
+            .withColumn("recent_reviews", coalesce(col("recent_reviews"), lit(0))) // si pas de review recent mettre 0
             .withColumn("recent_unique_users", coalesce(col("recent_unique_users"), lit(0)))
             .select(
                 "business_id", "name", "address", "city", "state", "categories", "latitude", "longitude", "is_open",
@@ -99,7 +99,7 @@ object CompetitiveAnalysis {
                 (
                     (col("b1.city") === col("b2.city") && col("b1.state") === col("b2.state")) || // Même ville
                     (col("b1.state") === col("b2.state")) // Même état
-                )
+                ) // meme vile ou meme etats
             ).select(
                 col("b1.business_id").alias("target_business_id"),
                 col("b1.name").alias("target_name"),
@@ -173,16 +173,18 @@ object CompetitiveAnalysis {
         
         val competitiveAnalysis = competitiveData
             .withColumn("better_rating_count", 
-                sum(when(col("target_average_rating") > col("competitor_average_rating"), 1).otherwise(0))
-                .over(windowSpecRating))
-            .withColumn("total_competitors_rating", count("*").over(windowSpecRating))
+                sum(
+                    when(col("target_average_rating") > col("competitor_average_rating"), 1).otherwise(0)
+                ).over(windowSpecRating)) // combien de concurrents ont une note inférieure
+            .withColumn("total_competitors_rating", count("*").over(windowSpecRating)) // combien de concurrents
             .withColumn("better_popularity_count", 
-                sum(when(col("target_total_reviews") > col("competitor_total_reviews"), 1).otherwise(0))
-                .over(windowSpecPopularity))
+                sum(
+                    when(col("target_total_reviews") > col("competitor_total_reviews"), 1).otherwise(0)
+                ).over(windowSpecPopularity))
             .withColumn("total_competitors_popularity", count("*").over(windowSpecPopularity))
-            .withColumn("rating_percentile", 
+            .withColumn("rating_percentile",  // Proportion de concurrents avec une note inférieure, exprimée en pourcentage et arrondie à 1 décimale.
                 round((col("better_rating_count").cast("double") / col("total_competitors_rating")) * 100, 1))
-            .withColumn("popularity_percentile", 
+            .withColumn("popularity_percentile", // Proportion de concurrents avec une popularité inférieure, exprimée en pourcentage et arrondie à 1 décimale.
                 round((col("better_popularity_count").cast("double") / col("total_competitors_popularity")) * 100, 1))
             .withColumn("avg_percentile", 
                 round((col("rating_percentile") + col("popularity_percentile")) / 2, 1))
@@ -216,12 +218,12 @@ object CompetitiveAnalysis {
                 first("popularity_percentile").alias("popularity_percentile"),
                 first("avg_percentile").alias("avg_percentile"),
                 first("market_position").alias("market_position"),
-                count("*").alias("total_competitors"),
+                count("*").alias("total_competitors"), // Nombre total de concurrents
                 sum(when(col("is_same_city"), 1).otherwise(0)).alias("same_city_competitors"),
-                max("competitor_average_rating").alias("best_competitor_rating"),
-                max("competitor_total_reviews").alias("most_popular_competitor_reviews"),
-                avg("competitor_average_rating").alias("avg_competitor_rating"),
-                avg("competitor_total_reviews").alias("avg_competitor_reviews")
+                max("competitor_average_rating").alias("best_competitor_rating"), // Concurrents les plus performants
+                max("competitor_total_reviews").alias("most_popular_competitor_reviews"), // Note moyenne du meilleur concurrent
+                avg("competitor_average_rating").alias("avg_competitor_rating"), // Nombre d'avis du concurrent le plus populaire.
+                avg("competitor_total_reviews").alias("avg_competitor_reviews") // Moyenne des concurrents
             )
             .withColumn("avg_competitor_rating", round(col("avg_competitor_rating"), 2))
             .withColumn("avg_competitor_reviews", round(col("avg_competitor_reviews"), 0))
@@ -229,21 +231,21 @@ object CompetitiveAnalysis {
         // Identifier les forces et faiblesses
         val positioningWithInsights = marketPositioning
             .withColumn("strengths", 
-            concat_ws(", ",
-                when(col("rating_percentile") >= 70, lit("Excellence des notes")).otherwise(lit("")),
-                when(col("popularity_percentile") >= 70, lit("Forte popularité")).otherwise(lit("")),
-                when(col("same_city_competitors") < 5, lit("Faible concurrence locale")).otherwise(lit(""))
-            )
+                concat_ws(", ",
+                    when(col("rating_percentile") >= 70, lit("Excellence des notes")).otherwise(lit("")),
+                    when(col("popularity_percentile") >= 70, lit("Forte popularité")).otherwise(lit("")),
+                    when(col("same_city_competitors") < 5, lit("Faible concurrence locale")).otherwise(lit(""))
+                )
             )
             .withColumn("weaknesses",
                 concat_ws(", ",
-                when(col("rating_percentile") <= 30, lit("Notes inférieures à la moyenne")).otherwise(lit("")),
-                when(col("popularity_percentile") <= 30, lit("Faible visibilité")).otherwise(lit("")),
-                when(col("same_city_competitors") > 20, lit("Forte concurrence locale")).otherwise(lit(""))
+                    when(col("rating_percentile") <= 30, lit("Notes inférieures à la moyenne")).otherwise(lit("")),
+                    when(col("popularity_percentile") <= 30, lit("Faible visibilité")).otherwise(lit("")),
+                    when(col("same_city_competitors") > 20, lit("Forte concurrence locale")).otherwise(lit(""))
+                )
             )
-            )
-            .withColumn("strengths", regexp_replace(col("strengths"), "^, |, $", ""))
-            .withColumn("weaknesses", regexp_replace(col("weaknesses"), "^, |, $", ""))
+            .withColumn("strengths", regexp_replace(col("strengths"), "^, |, $", "")) // "^," supprime une virgule + espace au début de la chaîne.
+            .withColumn("weaknesses", regexp_replace(col("weaknesses"), "^, |, $", "")) // ", $" supprime une virgule + espace à la fin de la chaîne.
         
         // Sauvegarde en base
         positioningWithInsights.write
