@@ -9,8 +9,7 @@ Bien sûr ! Voici une version plus claire, structurée et professionnelle de ton
 * **Git**
 * **Docker & Docker Compose**
 * **SBT (Scala Build Tool)**
-* **Java JDK (version compatible avec Spark)**
-* **Python (pour Streamlit Dashboard)**
+* **Java JDK 11**
 
 ---
 
