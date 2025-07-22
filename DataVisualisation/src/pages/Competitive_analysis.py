@@ -570,10 +570,10 @@ def main():
                     st.metric("Position", positioning['position'])
                 
                 with col2:
-                    st.metric("Proportion de concurrents avec une note inférieure", f"{positioning['percentile_rating']:.0f}%")
+                    st.metric("Est ce que je suis bien noté ?", f"{positioning['percentile_rating']:.0f}%")
                 
                 with col3:
-                    st.metric("Proportion de concurrents avec une popularité inférieure", f"{positioning['percentile_popularity']:.0f}%")
+                    st.metric("Est ce que je suis populaire ?", f"{positioning['percentile_popularity']:.0f}%")
                 
                 with col4:
                     st.metric("Concurrents totaux", positioning['total_competitors'])

@@ -182,11 +182,11 @@ object CompetitiveAnalysis {
                     when(col("target_total_reviews") > col("competitor_total_reviews"), 1).otherwise(0)
                 ).over(windowSpecPopularity))
             .withColumn("total_competitors_popularity", count("*").over(windowSpecPopularity))
-            .withColumn("rating_percentile",  // Proportion de concurrents avec une note inférieure, exprimée en pourcentage et arrondie à 1 décimale.
+            .withColumn("rating_percentile",  // si 90 L’entreprise est mieux notée que 90 % de ses concurrents.
                 round((col("better_rating_count").cast("double") / col("total_competitors_rating")) * 100, 1))
-            .withColumn("popularity_percentile", // Proportion de concurrents avec une popularité inférieure, exprimée en pourcentage et arrondie à 1 décimale.
+            .withColumn("popularity_percentile", // Si 90 l’entreprise est plus populaire (en termes de nombre d’avis) que 90 % de ses concurrents.
                 round((col("better_popularity_count").cast("double") / col("total_competitors_popularity")) * 100, 1))
-            .withColumn("avg_percentile", 
+            .withColumn("avg_percentile", // Très bien noté et très populaire ?
                 round((col("rating_percentile") + col("popularity_percentile")) / 2, 1))
             .withColumn("market_position",
                 when(col("avg_percentile") >= 80, "Leader du marché")
@@ -335,7 +335,7 @@ object CompetitiveAnalysis {
     
     val competitiveInsights = marketPositioningDF
         .withColumn("primary_insight",
-            when(col("rating_percentile") >= 70 && col("popularity_percentile") >= 70, 
+            when(col("rating_percentile") >= 70 && col("popularity_percentile") >= 70, // L'entreprise est mieux notée que 70% de ses concurrents. et L’entreprise est populaire (70% des concurrents ont moins d’avis).
                 "Leader du marché avec excellence sur tous les fronts")
             .when(col("rating_percentile") >= 70 && col("popularity_percentile") < 50, 
                 "Excellente qualité mais manque de visibilité")
@@ -348,7 +348,7 @@ object CompetitiveAnalysis {
             .otherwise("Position à consolider")
         )
         .withColumn("recommended_action",
-            when(col("rating_percentile") < 50, 
+            when(col("rating_percentile") < 50, // si L'entreprise est moins bien notée que la moitié de ses concurrents
                 "Priorité: Améliorer la satisfaction client et la qualité du service")
             .when(col("popularity_percentile") < 50, 
                 "Priorité: Augmenter la visibilité et encourager les avis clients")
@@ -356,7 +356,7 @@ object CompetitiveAnalysis {
                 "Opportunité: Dominer le marché local")
             .otherwise("Maintenir les standards et surveiller la concurrence")
         )
-        .withColumn("competitive_advantage",
+        .withColumn("competitive_advantage", // La moyenne de l’entreprise est d’au moins 0,5 point supperieur à la moyenne de ses concurrents
             when(col("target_average_rating") > col("avg_competitor_rating") + 0.5, 
                 "Avantage qualité significatif")
             .when(col("target_total_reviews") > col("avg_competitor_reviews") * 2, 
