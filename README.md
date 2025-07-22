@@ -32,10 +32,10 @@ unzip yelp_dataset.zip
 
 3. **Configurer les variables d'environnement**
 
-Copiez le fichier d'exemple `.env.example` en `.env` :
+Copiez le fichier d'exemple `.env.exemple` en `.env` :
 
 ```bash
-mv .env.example .env
+mv .env.exemple .env
 ```
 
 4. **Compiler les modules Scala**
