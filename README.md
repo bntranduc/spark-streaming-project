@@ -1,67 +1,74 @@
-# spark-streaming-project
+Bien sûr ! Voici une version plus claire, structurée et professionnelle de ton README pour ton projet **Spark Streaming** :
 
-## Installer java-11
-```
-sudo apt update
-sudo apt install openjdk-11-jdk
-```
+---
 
-Sélectionner la version 11 de Java à exécuter :
-```
-sudo update-alternatives --config java
-sudo update-alternatives --config javac
-sdk install java 11.0.20-tem
-```
+# Spark Streaming - Guide d'installation et de test
 
-Installer sbt :
-```
-curl -s "https://get.sdkman.io" | bash
-source "$HOME/.sdkman/bin/sdkman-init.sh"
-sdk install sbt
-sbt sbtVersion
-```
+## Prérequis
 
-## Installer postgresql
-```
-sudo apt install postgresql postgresql-contrib
+* **Git**
+* **Docker & Docker Compose**
+* **SBT (Scala Build Tool)**
+* **Java JDK (version compatible avec Spark)**
+* **Python (pour Streamlit Dashboard)**
+
+---
+
+## Installation
+
+1. **Cloner le dépôt**
+
+```bash
+git clone git@github.com:bntranduc/spark-streaming-project.git &&
+cd spark-streaming-project
 ```
 
-## Se connecter a la bdd de docker
-```
-sudo -u postgres psql
-```
-ou
-```
-psql -h localhost -p 5432 -U user -d mydatabase
-```
-Copier-coller les instructions dans init/init.sql
+2. **Préparer les données**
 
-## Clear le cache
+Dézippez le dataset dans le répertoire principal du projet :
+
+```bash
+unzip yelp_dataset.zip
 ```
-cd Producer
+
+3. **Configurer les variables d'environnement**
+
+Copiez le fichier d'exemple `.env.example` en `.env` :
+
+```bash
+mv .env.example .env
+```
+
+4. **Compiler les modules Scala**
+
+### Consumer
+
+```bash
+cd Consumer
 sbt clean assembly
+```
 
-cd ../Consumer
+### Producer
+
+```bash
+cd ../Producer
 sbt clean assembly
 ```
 
-## Lancer tout le projet
-```
-docker-compose up --build
+5. **Lancer les services avec Docker**
+
+Assurez-vous d’être dans le répertoire principal du projet, puis exécutez :
+
+```bash
+docker compose up --build
 ```
 
-## Arrêter l'environnement
-```
-docker-compose down
-```
+---
 
-## Voir les logs
-```
-docker-compose logs -f
-```
+## Accès aux interfaces de monitoring
 
-docker-compose down --volumes --remove-orphans
-docker system prune -a --volumes
-
-## Commande Docker Compose complète pour tout réinitialiser 
-docker compose down --volumes --remove-orphans --rmi all
+| Service                 | URL                                     | Description                          |
+| ----------------------- | --------------------------------------- | ------------------------------------ |
+| **Dashboard Streamlit** | [localhost:8501](http://localhost:8501) | Visualisation des flux en temps réel |
+| **Spark UI - Producer** | [localhost:4040](http://localhost:4040) | Interface Spark du Producer          |
+| **Spark UI - Consumer** | [localhost:4041](http://localhost:4041) | Interface Spark du Consumer          |
